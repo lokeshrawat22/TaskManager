@@ -1,0 +1,544 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+:root {
+  --primary: #0b2d63;
+  --primary-blue: #087db5;
+  --cyan: #10a9d1;
+  --teal: #08afa3;
+
+  --background: #f3f7fb;
+  --card: #ffffff;
+
+  --text: #090D14;
+  --muted: #334155;
+
+  --border: #CBD5E1;
+  --error: #dc3545;
+
+  /* Global Enterprise Typography System Tokens */
+  --font-page-title: 28px;
+  --font-section-title: 12px;
+  --font-primary: 14px;
+  --font-body: 13px;
+  --font-secondary: 12px;
+  --font-caption: 11px;
+}
+
+.dark {
+  --background: #071923;
+  --card: #0B202B;
+  --text: #F8FAFC;
+  --muted: #94A3B8;
+  --border: #1E3A47;
+
+  /* Enterprise Dark Theme Color System */
+  --dark-bg: #071923;
+  --dark-surface: #0B202B;
+  --dark-surface-2: #102A36;
+  --dark-surface-hover: #14323F;
+
+  --dark-border: #1E3A47;
+  --dark-border-light: #18333F;
+
+  --dark-text-primary: #F8FAFC;
+  --dark-text-secondary: #CBD5E1;
+  --dark-text-muted: #94A3B8;
+
+  --dark-primary: #38BDF8;
+  --dark-primary-hover: #0EA5E9;
+  --dark-primary-light: #0C3345;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.011em;
+  overflow-x: clip;
+  width: 100%;
+  max-width: 100vw;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+  scroll-padding-top: 76px;
+}
+
+/* =====================================================
+   ENTERPRISE TYPOGRAPHY SYSTEM SCALE
+   Unified font system: Inter (Professional Enterprise UI)
+===================================================== */
+.text-page-title {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 34px;
+  letter-spacing: -0.02em;
+  color: #0F172A;
+}
+.dark .text-page-title {
+  color: #FFFFFF;
+}
+
+.text-page-subtitle {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 20px;
+  color: #64748B;
+}
+.dark .text-page-subtitle {
+  color: #94A3B8;
+}
+
+.text-section-heading {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+  letter-spacing: -0.015em;
+  color: #0F172A;
+}
+.dark .text-section-heading {
+  color: #FFFFFF;
+}
+
+.text-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #0F172A;
+}
+.dark .text-card-title {
+  color: #FFFFFF;
+}
+
+.text-kpi-number {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 34px;
+  letter-spacing: -0.02em;
+  color: #0F172A;
+  font-variant-numeric: tabular-nums;
+}
+.dark .text-kpi-number {
+  color: #FFFFFF;
+}
+
+.text-kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 16px;
+  color: #475569;
+}
+.dark .text-kpi-label {
+  color: #CBD5E1;
+}
+
+.text-eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 16px;
+  color: #087D8F;
+}
+.dark .text-eyebrow {
+  color: #38BDF8;
+}
+
+.text-body {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 18px;
+  color: #334155;
+}
+.dark .text-body {
+  color: #CBD5E1;
+}
+
+.text-table-primary {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #0F172A;
+}
+.dark .text-table-primary {
+  color: #F8FAFC;
+}
+
+.text-table-secondary {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 17px;
+  color: #64748B;
+}
+.dark .text-table-secondary {
+  color: #94A3B8;
+}
+
+.text-secondary {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 17px;
+  color: #64748B;
+}
+.dark .text-secondary {
+  color: #94A3B8;
+}
+
+.enterprise-table th {
+  font-size: 11px;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 16px;
+  color: #475569 !important;
+}
+.dark .enterprise-table th {
+  color: #CBD5E1 !important;
+}
+
+.text-metadata {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #64748B;
+}
+.dark .text-metadata {
+  color: #94A3B8;
+}
+
+.text-nav-item {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+  color: #334155;
+}
+.dark .text-nav-item {
+  color: #CBD5E1;
+}
+
+.text-nav-item-active {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+  color: #1D4ED8;
+}
+.dark .text-nav-item-active {
+  color: #38BDF8;
+}
+
+::selection {
+  background: var(--cyan);
+  color: white;
+}
+
+/* Date input spacing */
+input[type="date"]::-webkit-datetime-edit {
+  padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+  padding: 0;
+}
+
+input[type="date"]::-webkit-datetime-edit-text {
+  padding: 0 1px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  margin: 0;
+  padding: 0;
+}
+
+/* Disable native browser password reveal and clear controls to prevent duplicate eye icons */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear,
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* Smooth custom responsive horizontal scrollbars for tables and charts */
+.responsive-table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.responsive-table-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.responsive-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.responsive-table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(140, 170, 185, 0.35);
+  border-radius: 9999px;
+}
+
+.responsive-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 170, 185, 0.6);
+}
+
+/* =====================================================
+   ENTERPRISE SAAS DATA TABLE (BORDERS & SEPARATORS)
+===================================================== */
+.enterprise-table {
+  width: 100%;
+  border-collapse: collapse !important;
+  border: 1px solid #E2E8F0 !important;
+}
+
+.dark .enterprise-table {
+  border-color: #1E3A47 !important;
+}
+
+.enterprise-table thead,
+.enterprise-table thead tr,
+.enterprise-table thead th {
+  border-bottom: 1px solid #D8DEE8 !important;
+}
+
+.dark .enterprise-table thead,
+.dark .enterprise-table thead tr,
+.dark .enterprise-table thead th {
+  border-bottom-color: #1E3A47 !important;
+}
+
+.enterprise-table tbody tr {
+  background-color: #FFFFFF !important;
+  border-bottom: 1px solid #E5E7EB !important;
+  vertical-align: middle;
+  transition: background-color 150ms ease;
+}
+
+.dark .enterprise-table tbody tr {
+  background-color: #0B202B !important;
+  border-bottom-color: #18333F !important;
+}
+
+.enterprise-table tbody td {
+  border-bottom: 1px solid #E5E7EB !important;
+  vertical-align: middle;
+}
+
+.dark .enterprise-table tbody td {
+  border-bottom-color: #18333F !important;
+}
+
+.enterprise-table tbody tr:hover,
+.enterprise-table tbody tr:hover > td {
+  background-color: #F8FAFC !important;
+}
+
+.dark .enterprise-table tbody tr:hover,
+.dark .enterprise-table tbody tr:hover > td {
+  background-color: #102A36 !important;
+}
+
+
+/* =====================================================
+   ACCESSIBILITY: FONT SIZING
+===================================================== */
+:root[data-font-size="small"] {
+  font-size: 14px;
+}
+
+:root[data-font-size="default"] {
+  font-size: 16px;
+}
+
+:root[data-font-size="large"] {
+  font-size: 18px;
+}
+
+:root[data-font-size="extra-large"] {
+  font-size: 20px;
+}
+
+/* =====================================================
+   ACCESSIBILITY: HIGH CONTRAST MODE
+===================================================== */
+html.high-contrast,
+:root[data-high-contrast="true"] {
+  --border: #334155;
+  --text: #020617;
+  --muted: #1e293b;
+}
+
+html.dark.high-contrast,
+:root[data-high-contrast="true"].dark {
+  --border: #cbd5e1;
+  --text: #ffffff;
+  --muted: #f8fafc;
+  --background: #061520;
+  --card: #0a1f2d;
+}
+
+html.high-contrast * {
+  border-color: rgba(51, 65, 85, 0.35);
+}
+
+html.dark.high-contrast * {
+  border-color: rgba(203, 213, 225, 0.35);
+}
+
+html.high-contrast button,
+html.high-contrast input,
+html.high-contrast select,
+html.high-contrast textarea {
+  border-width: 1.5px;
+}
+
+/* =====================================================
+   ACCESSIBILITY: REDUCE MOTION
+===================================================== */
+html.reduce-motion *,
+html.reduce-motion *::before,
+html.reduce-motion *::after,
+:root[data-reduce-motion="true"] *,
+:root[data-reduce-motion="true"] *::before,
+:root[data-reduce-motion="true"] *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* =====================================================
+   MINDMATRIX TOAST NOTIFICATIONS (COMPACT TOP-CENTER)
+===================================================== */
+[data-sonner-toaster] {
+  position: fixed !important;
+  top: 100px !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translateX(-50%) !important;
+  z-index: 99999999 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  pointer-events: none !important;
+  width: auto !important;
+  max-width: 100vw !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+[data-sonner-toaster] [data-sonner-toast] {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 auto 8px auto !important;
+  width: auto !important;
+  max-width: 100% !important;
+  pointer-events: auto !important;
+  transform: none !important;
+}
+
+@media (max-width: 640px) {
+  [data-sonner-toaster] {
+    top: 88px !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: 100% !important;
+    padding: 0 16px !important;
+  }
+}
+
+/* Smooth subtle entrance and exit animations */
+@keyframes mm-toast-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mm-toast-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.mm-toast-card {
+  animation: mm-toast-enter 260ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+[data-sonner-toast][data-removed="true"] .mm-toast-card {
+  animation: mm-toast-exit 180ms ease-out forwards;
+}
+
+/* =====================================================
+   DROPDOWN ANIMATION
+===================================================== */
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.dropdown-fade-in {
+  animation: dropdownFadeIn 160ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* =====================================================
+   RESPONSIVE TABLE CONTAINER SCROLLING
+===================================================== */
+.responsive-table-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+}
+
+.responsive-table-scroll::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+
+.responsive-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.responsive-table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.4);
+  border-radius: 9999px;
+}
+
+.dark .responsive-table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5);
+}
