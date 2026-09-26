@@ -1073,6 +1073,8 @@ export default function ProfileVerificationModals({
       <Modal
         isOpen={!!activeModal}
         onClose={handleCancelOrClose}
+        closeOnClickOutside={false}
+        closeOnEsc={false}
         className="w-full max-w-md"
       >
         {activeModal && (

@@ -604,6 +604,8 @@ export default function LoginForm() {
       <Modal
         isOpen={verificationPending}
         onClose={() => setVerificationPending(false)}
+        closeOnClickOutside={false}
+        closeOnEsc={false}
         style={{
           width: "calc(100vw - 32px)",
           maxWidth: "520px",

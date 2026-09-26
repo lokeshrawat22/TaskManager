@@ -78,10 +78,28 @@ export function Modal({
   const modalContentRef = useRef<HTMLDivElement>(null);
   const exitTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [isLockedShake, setIsLockedShake] = useState(false);
+  const shakeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   // Client-side mount detection for Next.js SSR
   useEffect(() => {
     setMounted(true);
+    return () => {
+      if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
+    };
   }, []);
+
+  const handleBackdropClick = () => {
+    if (closeOnClickOutside && onClose) {
+      onClose();
+    } else if (!closeOnClickOutside) {
+      setIsLockedShake(true);
+      if (shakeTimerRef.current) clearTimeout(shakeTimerRef.current);
+      shakeTimerRef.current = setTimeout(() => {
+        setIsLockedShake(false);
+      }, 350);
+    }
+  };
 
   // Preserve cached children while active or transitioning out
   useEffect(() => {
@@ -173,11 +191,7 @@ export function Modal({
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
         }}
-        onClick={() => {
-          if (closeOnClickOutside && onClose) {
-            onClose();
-          }
-        }}
+        onClick={handleBackdropClick}
         aria-hidden="true"
       />
 
@@ -203,6 +217,8 @@ export function Modal({
             aria-label={ariaLabel}
             aria-describedby={ariaDescribedBy}
             className={`pointer-events-auto max-w-[calc(100vw-24px)] transition-all duration-200 transform-gpu ${
+              isLockedShake ? "animate-modal-shake" : ""
+            } ${
               isVisible
                 ? "opacity-100 scale-100 translate-y-0 ease-out"
                 : "opacity-0 scale-[0.96] translate-y-1 ease-in"
