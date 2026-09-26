@@ -60,7 +60,7 @@ const corsOptions: cors.CorsOptions = {
     if (isAllowed) {
       callback(null, true);
     } else {
-      callback(new Error(`CORS origin not allowed: ${origin}`));
+      callback(null, false);
     }
   },
   credentials: true,
