@@ -88,6 +88,7 @@ const cookieOptions = {
     get sameSite() { return getAuthCookieOptions().sameSite; },
     get path() { return getAuthCookieOptions().path; },
     get domain() { return getAuthCookieOptions().domain; },
+    get partitioned() { return getAuthCookieOptions().partitioned; },
 };
 const normalizeEmail = (email: string) => String(email).trim().toLowerCase();
 const normalizePhone = (phone: string) => String(phone).trim();
@@ -152,8 +153,8 @@ const userResponse = (user: any) => ({
     profilePhoto: user.profilePhoto,
 });
 const clearAuthCookies = (res: Response): void => {
-    res.clearCookie("accessToken", cookieOptions);
-    res.clearCookie("refreshToken", cookieOptions);
+    res.clearCookie("accessToken", { ...cookieOptions });
+    res.clearCookie("refreshToken", { ...cookieOptions });
 };
 export const register = async (req: Request<{}, {}, RegisterDTO>, res: Response, next: NextFunction): Promise<void> => {
     try {
@@ -1083,8 +1084,12 @@ export const login = async (req: Request<{}, {}, LoginDTO>, res: Response, next:
 };
 export const refreshAccessToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
+        const hasRefreshToken = Boolean(req.cookies?.refreshToken);
+        console.log(`[AUTH-DIAG] Refresh endpoint hit. Cookie present: ${hasRefreshToken}`);
+
         const refreshToken = req.cookies?.refreshToken;
         if (!refreshToken) {
+            console.log("[AUTH-DIAG] Refresh failed: Refresh token cookie is missing (401)");
             res.status(401).json({
                 success: false,
                 message: "Refresh token is missing.",
@@ -1096,6 +1101,7 @@ export const refreshAccessToken = async (req: Request, res: Response, next: Next
         try {
             decoded = verifyRefreshToken(refreshToken);
         } catch {
+            console.log("[AUTH-DIAG] Refresh failed: Invalid or expired refresh token signature (401)");
             clearAuthCookies(res);
             res.status(401).json({
                 success: false,
@@ -1105,6 +1111,7 @@ export const refreshAccessToken = async (req: Request, res: Response, next: Next
         }
 
         if (decoded.type && decoded.type !== "refresh") {
+            console.log("[AUTH-DIAG] Refresh failed: Invalid token type (401)");
             clearAuthCookies(res);
             res.status(401).json({
                 success: false,
@@ -1115,6 +1122,7 @@ export const refreshAccessToken = async (req: Request, res: Response, next: Next
 
         const tokenUserId = decoded.userId || decoded.sub;
         if (!tokenUserId) {
+            console.log("[AUTH-DIAG] Refresh failed: Invalid token payload userId (401)");
             clearAuthCookies(res);
             res.status(401).json({
                 success: false,
@@ -1126,6 +1134,7 @@ export const refreshAccessToken = async (req: Request, res: Response, next: Next
         // Fetch user from DB to verify authoritative account status
         const user = await User.findById(tokenUserId).select("_id role isBlocked email");
         if (!user) {
+            console.log(`[AUTH-DIAG] Refresh failed: User ${tokenUserId} not found (401)`);
             clearAuthCookies(res);
             res.status(401).json({
                 success: false,
@@ -1135,6 +1144,7 @@ export const refreshAccessToken = async (req: Request, res: Response, next: Next
         }
 
         if (user.isBlocked) {
+            console.log(`[AUTH-DIAG] Refresh failed: User ${tokenUserId} is blocked (403)`);
             clearAuthCookies(res);
             res.status(403).json({
                 success: false,
@@ -1171,12 +1181,14 @@ export const refreshAccessToken = async (req: Request, res: Response, next: Next
             maxAge: ttlMs,
         });
 
+        console.log(`[AUTH-DIAG] Refresh succeeded for user: ${user._id}`);
         res.status(200).json({
             success: true,
             message: "Access token refreshed successfully.",
         });
     }
     catch (error) {
+        console.log("[AUTH-DIAG] Refresh failed: Unexpected exception in refreshAccessToken (401)");
         clearAuthCookies(res);
         res.status(401).json({
             success: false,
@@ -1253,6 +1265,7 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
             });
             return;
         }
+        console.log(`[AUTH-DIAG] Profile request succeeded. Status: 200, user: ${user._id}`);
         res.status(200).json({
             success: true,
             message: "Profile fetched successfully",

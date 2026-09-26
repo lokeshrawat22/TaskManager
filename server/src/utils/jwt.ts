@@ -340,15 +340,28 @@ export const getAuthCookieOptions = (): CookieOptions => {
       ? process.env.COOKIE_SECURE === "true"
       : isProduction || sameSite === "none";
 
+  // CHIPS (Cookies Having Independent Partitioned State) for modern cross-site cookie isolation (required for Mobile Chrome)
+  const partitioned =
+    process.env.COOKIE_PARTITIONED !== undefined
+      ? process.env.COOKIE_PARTITIONED === "true"
+      : secure && (isProduction || sameSite === "none");
+
   const options: CookieOptions = {
     httpOnly: true,
     secure,
     sameSite,
     path: "/",
+    ...(partitioned ? { partitioned: true } : {}),
   };
 
-  if (process.env.COOKIE_DOMAIN) {
-    options.domain = process.env.COOKIE_DOMAIN;
+  // Safe domain validation: Never set domain to a public suffix (such as onrender.com)
+  // because browsers (especially Mobile Chrome) reject cookies set with domain matching an eTLD.
+  const rawDomain = process.env.COOKIE_DOMAIN?.trim();
+  if (rawDomain) {
+    const normalized = rawDomain.replace(/^\./, "").toLowerCase();
+    if (normalized !== "onrender.com" && !normalized.endsWith(".onrender.com")) {
+      options.domain = rawDomain;
+    }
   }
 
   return options;

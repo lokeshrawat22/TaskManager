@@ -35,18 +35,18 @@ export const resetSessionState = (): void => {
 
 const refreshTokenSafely = async (): Promise<boolean> => {
   if (sessionTerminated) {
+    console.log("[AUTH-DIAG] refreshTokenSafely skipped: Session is already terminated");
     return false;
   }
 
   if (!refreshPromise) {
-    if (process.env.NODE_ENV === "development") {
-      console.log("[API] Initiating access token refresh...");
-    }
+    console.log("[AUTH-DIAG] Initiating access token refresh...");
 
     refreshPromise = refreshAccessToken()
       .then((success) => {
         if (!success) {
           sessionTerminated = true;
+          console.log("[AUTH-DIAG] Access token refresh failed. Terminating session cache.");
           if (typeof window !== "undefined") {
             try {
               localStorage.removeItem("user");
@@ -56,17 +56,16 @@ const refreshTokenSafely = async (): Promise<boolean> => {
           }
         } else {
           sessionTerminated = false;
+          console.log("[AUTH-DIAG] Access token refresh succeeded. Session active.");
         }
         return success;
       })
       .catch((error) => {
         sessionTerminated = true;
-        if (process.env.NODE_ENV === "development") {
-          console.error(
-            "[API] Refresh token request threw an error (not token values):",
-            error?.message ?? error,
-          );
-        }
+        console.log(
+          "[AUTH-DIAG] Refresh token request threw an error (not token values):",
+          error?.message ?? error,
+        );
         if (typeof window !== "undefined") {
           try {
             localStorage.removeItem("user");
@@ -79,9 +78,9 @@ const refreshTokenSafely = async (): Promise<boolean> => {
       .finally(() => {
         refreshPromise = null;
       });
-  } else if (process.env.NODE_ENV === "development") {
+  } else {
     console.log(
-      "[API] Refresh already in-flight — queuing behind existing request",
+      "[AUTH-DIAG] Refresh already in-flight — queuing behind existing request",
     );
   }
 
@@ -294,6 +293,7 @@ export const apiRequest = async <T = any>(
 
     const isRefreshExcluded =
       endpoint.includes("/auth/refresh-token") ||
+      endpoint.includes("/auth/refresh-access-token") ||
       endpoint.includes("/auth/logout") ||
       endpoint.includes("/auth/login") ||
       endpoint.includes("/auth/register") ||
@@ -309,21 +309,16 @@ export const apiRequest = async <T = any>(
       !isRefreshExcluded &&
       !sessionTerminated
     ) {
-      if (process.env.NODE_ENV === "development" && !options.silent) {
-        console.warn(
-          "[API] Access token expired or missing — attempting silent refresh...",
-        );
-      }
+      console.log(
+        `[AUTH-DIAG] Access token expired or missing (401) on ${endpoint}. Attempting silent refresh before retry...`
+      );
 
       const refreshed = await refreshTokenSafely();
 
       if (refreshed) {
-        if (process.env.NODE_ENV === "development" && !options.silent) {
-          console.log(
-            "[API] Access token refreshed ✓ — retrying original request:",
-            endpoint,
-          );
-        }
+        console.log(
+          `[AUTH-DIAG] Access token refreshed successfully ✓ — retrying original request: ${endpoint}`
+        );
 
         return await apiRequest<T>(
           endpoint,
@@ -332,11 +327,9 @@ export const apiRequest = async <T = any>(
         );
       }
 
-      if (process.env.NODE_ENV === "development" && !options.silent) {
-        console.warn(
-          "[API] Refresh token expired or invalid — session will be terminated.",
-        );
-      }
+      console.log(
+        `[AUTH-DIAG] Refresh token expired or invalid — cannot refresh session for ${endpoint}.`
+      );
     }
 
     // =================================================
@@ -362,7 +355,8 @@ export const apiRequest = async <T = any>(
         response.status === 401 &&
         (endpoint.includes("/auth/me") ||
           endpoint.includes("/auth/profile") ||
-          endpoint.includes("/auth/refresh-token"));
+          endpoint.includes("/auth/refresh-token") ||
+          endpoint.includes("/auth/refresh-access-token"));
 
       if (!isExpectedAuthProbe && !options.silent) {
         console.error(
@@ -442,7 +436,8 @@ export const apiRequest = async <T = any>(
         error?.status === 401 &&
         (endpoint.includes("/auth/me") ||
           endpoint.includes("/auth/profile") ||
-          endpoint.includes("/auth/refresh-token"));
+          endpoint.includes("/auth/refresh-token") ||
+          endpoint.includes("/auth/refresh-access-token"));
 
       if (!isExpectedAuthProbe) {
         console.error(

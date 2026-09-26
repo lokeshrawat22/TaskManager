@@ -35,9 +35,9 @@ export const authenticate = async (
     // GET ACCESS TOKEN
     // =================================================
 
-    const token = req.cookies?.accessToken;
-
-    if (!token) {
+    const hasAccessToken = Boolean(req.cookies?.accessToken);
+    if (!hasAccessToken) {
+      console.log("[AUTH-DIAG] Authenticate check: Access token cookie is missing (401)");
       res.status(401).json({
         success: false,
         message: "Access token is missing.",
@@ -45,6 +45,8 @@ export const authenticate = async (
 
       return;
     }
+
+    const token = req.cookies?.accessToken;
 
     // =================================================
     // CHECK SECRET
@@ -77,6 +79,7 @@ export const authenticate = async (
     const tokenUserId = decoded.userId || decoded.sub;
 
     if (!tokenUserId) {
+      console.log("[AUTH-DIAG] Authenticate check: Invalid token payload (401)");
       res.status(401).json({
         success: false,
         message: "Invalid token payload.",
@@ -93,6 +96,7 @@ export const authenticate = async (
     ).select("_id role isBlocked email firstName lastName");
 
     if (!user) {
+      console.log(`[AUTH-DIAG] Authenticate check: User ${tokenUserId} not found (401)`);
       res.status(401).json({
         success: false,
         message: "User not found.",
@@ -106,6 +110,7 @@ export const authenticate = async (
     // =================================================
 
     if (user.isBlocked) {
+      console.log(`[AUTH-DIAG] Authenticate check: User ${tokenUserId} is blocked (403)`);
       const cookieOpts = getAuthCookieOptions();
       res.clearCookie("accessToken", cookieOpts);
       res.clearCookie("refreshToken", cookieOpts);
@@ -133,10 +138,11 @@ export const authenticate = async (
       name: fullName || undefined,
     };
 
+    console.log(`[AUTH-DIAG] Authenticate check: Succeeded for user ${user._id}`);
     next();
 
   } catch (error: any) {
-    // Routine token expiration or invalidation should fail cleanly without polluting server logs
+    console.log("[AUTH-DIAG] Authenticate check: Invalid or expired access token (401)");
     res.status(401).json({
       success: false,
       message: "Invalid or expired access token.",

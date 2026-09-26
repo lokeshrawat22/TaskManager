@@ -840,6 +840,7 @@ export const handleBlockedEmployeeLogout = (customMessage?: string) => {
 
 export const refreshAccessToken = async (): Promise<boolean> => {
   try {
+    console.log("[AUTH-DIAG] Frontend initiating refresh endpoint request (/api/auth/refresh-token)...");
     const response = await fetch(
       `${API_BASE_URL}/api/auth/refresh-token`,
       {
@@ -849,6 +850,7 @@ export const refreshAccessToken = async (): Promise<boolean> => {
     );
 
     if (!response.ok) {
+      console.log(`[AUTH-DIAG] Refresh endpoint request failed with HTTP ${response.status}`);
       if (response.status === 403) {
         try {
           const errData = await response.clone().json();
@@ -863,9 +865,12 @@ export const refreshAccessToken = async (): Promise<boolean> => {
     }
 
     const result: AuthResponse = await response.json();
+    const success = result.success === true;
+    console.log(`[AUTH-DIAG] Refresh endpoint request completed. Success: ${success}`);
 
-    return result.success === true;
+    return success;
   } catch (error) {
+    console.log("[AUTH-DIAG] Refresh endpoint network error (not a token value):", (error as any)?.message ?? error);
     if (process.env.NODE_ENV === "development") {
       console.error(
         "[AUTH] refreshAccessToken threw (not a token value):",

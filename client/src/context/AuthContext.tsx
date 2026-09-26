@@ -144,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const promise = (async () => {
       try {
+        console.log("[AUTH-DIAG] Profile request starting (/api/auth/me)...");
         const response = await apiRequest<any>("/api/auth/me", {
           method: "GET",
         });
@@ -152,6 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           response?.data?.user ?? response?.data ?? response?.user ?? null;
 
         if (user && typeof user === "object") {
+          console.log(`[AUTH-DIAG] Profile request succeeded. Status: 200, user: ${user.id || user._id || user.email}`);
           setCurrentUser(user);
           try {
             localStorage.setItem("user", JSON.stringify(user));
@@ -160,6 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
           return user;
         } else {
+          console.log("[AUTH-DIAG] Profile request returned empty or invalid user payload");
           setCurrentUser(null);
           try {
             localStorage.removeItem("user");
@@ -168,6 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
       } catch (error: any) {
+        console.log(`[AUTH-DIAG] Profile request status: ${error?.status || "failed"}`);
         if (error?.status === 401) {
           setCurrentUser(null);
           try {
