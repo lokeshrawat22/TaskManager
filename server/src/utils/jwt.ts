@@ -324,7 +324,8 @@ export const parseDeviceInfo = (userAgent?: string): string => {
 // =====================================================
 
 export const getAuthCookieOptions = (): CookieOptions => {
-  const isProduction = process.env.NODE_ENV === "production";
+  const isProduction =
+    process.env.NODE_ENV === "production" || process.env.RENDER === "true";
   const sameSiteEnv = process.env.COOKIE_SAME_SITE?.toLowerCase();
 
   // In production across decoupled services (e.g. Render), SameSite must be "none" with Secure=true

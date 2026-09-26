@@ -9,6 +9,7 @@ export const getAllowedOrigins = (): string[] => {
     process.env.CLIENT_URL,
     process.env.FRONTEND_URL,
     ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : []),
+    "https://taskmanager-1-lw5v.onrender.com",
   ];
 
   const origins: string[] = [];
@@ -24,8 +25,8 @@ export const getAllowedOrigins = (): string[] => {
     }
   }
 
-  // Include localhost during development if no specific client origin is provided or during dev
-  if (process.env.NODE_ENV !== "production") {
+  // Include localhost during development if not on Render production
+  if (process.env.NODE_ENV !== "production" && process.env.RENDER !== "true") {
     origins.push(
       "http://localhost:3000",
       "http://127.0.0.1:3000",

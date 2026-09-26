@@ -49,11 +49,19 @@ const corsOptions: cors.CorsOptions = {
     }
 
     const allowedOrigins = getAllowedOrigins();
+
+    let reqOrigin = origin;
+    try {
+      reqOrigin = new URL(origin).origin;
+    } catch {
+      reqOrigin = origin.replace(/\/$/, "");
+    }
+
     const isAllowed = allowedOrigins.some((allowed) => {
       try {
-        return new URL(allowed).origin === new URL(origin).origin;
+        return new URL(allowed).origin === reqOrigin;
       } catch {
-        return allowed === origin;
+        return allowed.replace(/\/$/, "") === reqOrigin;
       }
     });
 
