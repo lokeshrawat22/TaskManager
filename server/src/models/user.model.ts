@@ -121,8 +121,12 @@ export interface IUser extends Document {
 
   pendingPhone?: string;
   pendingCountryCode?: string;
+  pendingPhoneOtp?: string;
+  pendingPhoneOtpExpiresAt?: Date;
 
   // Cross-verification fields (Email & Phone changes)
+  emailChangeCrossPhoneOtp?: string;
+  emailChangeCrossPhoneOtpExpiresAt?: Date;
   emailChangeCrossToken?: string;
   emailChangeCrossTokenExpiresAt?: Date;
 
@@ -540,7 +544,27 @@ const userSchema = new Schema<IUser>(
       trim: true,
     },
 
+    pendingPhoneOtp: {
+      type: String,
+      select: false,
+    },
+
+    pendingPhoneOtpExpiresAt: {
+      type: Date,
+      select: false,
+    },
+
     // Cross-verification fields (Email & Phone changes)
+    emailChangeCrossPhoneOtp: {
+      type: String,
+      select: false,
+    },
+
+    emailChangeCrossPhoneOtpExpiresAt: {
+      type: Date,
+      select: false,
+    },
+
     emailChangeCrossToken: {
       type: String,
       select: false,
@@ -685,6 +709,14 @@ const userSchema = new Schema<IUser>(
         delete ret.emailOtp;
         delete ret.phoneOtp;
         delete ret.resetPasswordOtp;
+        delete ret.pendingEmailOtp;
+        delete ret.pendingPhoneOtp;
+        delete ret.emailChangeCrossPhoneOtp;
+        delete ret.emailChangeCrossToken;
+        delete ret.phoneChangeCrossEmailOtp;
+        delete ret.phoneChangeCrossToken;
+        delete ret.emailChangeChallengeId;
+        delete ret.phoneChangeChallengeId;
         return ret;
       },
     },
@@ -697,6 +729,14 @@ const userSchema = new Schema<IUser>(
         delete ret.emailOtp;
         delete ret.phoneOtp;
         delete ret.resetPasswordOtp;
+        delete ret.pendingEmailOtp;
+        delete ret.pendingPhoneOtp;
+        delete ret.emailChangeCrossPhoneOtp;
+        delete ret.emailChangeCrossToken;
+        delete ret.phoneChangeCrossEmailOtp;
+        delete ret.phoneChangeCrossToken;
+        delete ret.emailChangeChallengeId;
+        delete ret.phoneChangeChallengeId;
         return ret;
       },
     },

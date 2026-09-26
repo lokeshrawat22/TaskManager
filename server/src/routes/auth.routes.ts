@@ -21,6 +21,23 @@ import {
   removeCoverImage,
 } from "../controllers/auth.controllers.js";
 
+import {
+  getChangeEmailPendingStatus,
+  initiateChangeEmailCrossVerification,
+  verifyChangeEmailCrossOtp,
+  requestChangeEmailOtp,
+  verifyAndUpdateEmail,
+  resendChangeEmailCrossOtp,
+  cancelChangeEmail,
+  getChangePhonePendingStatus,
+  initiateChangePhoneCrossVerification,
+  verifyChangePhoneCrossOtp,
+  requestChangePhoneOtp,
+  verifyAndUpdatePhone,
+  resendChangePhoneCrossOtp,
+  cancelChangePhone,
+} from "../controllers/crossVerification.controller.js";
+
 import upload from "../middlewares/upload.middleware.js";
 import { authenticate } from "../middlewares/auth.middleware.js";
 import { decryptLoginPayload } from "../middlewares/encryption.middleware.js";
@@ -234,6 +251,108 @@ router.delete(
   "/profile/cover",
   authenticate,
   removeCoverImage,
+);
+
+// =====================================================
+// CHANGE EMAIL CROSS-VERIFICATION
+// =====================================================
+
+router.get(
+  "/change-email/pending-status",
+  authenticate,
+  getChangeEmailPendingStatus,
+);
+
+router.post(
+  "/change-email/initiate-cross-verification",
+  authenticate,
+  otpLimiter,
+  initiateChangeEmailCrossVerification,
+);
+
+router.post(
+  "/change-email/verify-cross-otp",
+  authenticate,
+  otpLimiter,
+  verifyChangeEmailCrossOtp,
+);
+
+router.post(
+  "/change-email/request",
+  authenticate,
+  otpLimiter,
+  requestChangeEmailOtp,
+);
+
+router.post(
+  "/change-email/verify",
+  authenticate,
+  otpLimiter,
+  verifyAndUpdateEmail,
+);
+
+router.post(
+  "/change-email/resend-cross-otp",
+  authenticate,
+  otpLimiter,
+  resendChangeEmailCrossOtp,
+);
+
+router.post(
+  "/change-email/cancel",
+  authenticate,
+  cancelChangeEmail,
+);
+
+// =====================================================
+// CHANGE PHONE CROSS-VERIFICATION
+// =====================================================
+
+router.get(
+  "/change-phone/pending-status",
+  authenticate,
+  getChangePhonePendingStatus,
+);
+
+router.post(
+  "/change-phone/initiate-cross-verification",
+  authenticate,
+  otpLimiter,
+  initiateChangePhoneCrossVerification,
+);
+
+router.post(
+  "/change-phone/verify-cross-otp",
+  authenticate,
+  otpLimiter,
+  verifyChangePhoneCrossOtp,
+);
+
+router.post(
+  "/change-phone/request",
+  authenticate,
+  otpLimiter,
+  requestChangePhoneOtp,
+);
+
+router.post(
+  "/change-phone/verify",
+  authenticate,
+  otpLimiter,
+  verifyAndUpdatePhone,
+);
+
+router.post(
+  "/change-phone/resend-cross-otp",
+  authenticate,
+  otpLimiter,
+  resendChangePhoneCrossOtp,
+);
+
+router.post(
+  "/change-phone/cancel",
+  authenticate,
+  cancelChangePhone,
 );
 
 export default router;

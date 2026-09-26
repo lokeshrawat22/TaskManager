@@ -264,9 +264,19 @@ export const apiRequest = async <T = any>(
       const text =
         await response.text();
 
-      data = text
+      let cleanMessage = text;
+      if (text && (text.includes("<!DOCTYPE") || text.includes("<html") || text.trim().startsWith("<"))) {
+        const match = text.match(/<pre>(.*?)<\/pre>/i) || text.match(/<title>(.*?)<\/title>/i);
+        cleanMessage = match
+          ? match[1].replace(/<[^>]+>/g, "").trim()
+          : response.status === 404
+          ? "The requested endpoint was not found on the server."
+          : `Request failed with status ${response.status}`;
+      }
+
+      data = cleanMessage
         ? {
-            message: text,
+            message: cleanMessage,
           }
         : null;
     }
@@ -369,10 +379,25 @@ export const apiRequest = async <T = any>(
         );
       }
 
-      const apiError: any = new Error(
-        data?.message ||
-          `Request failed with status ${response.status}`,
-      );
+      let rawMessage =
+        data?.message || `Request failed with status ${response.status}`;
+      if (
+        typeof rawMessage === "string" &&
+        (rawMessage.includes("<!DOCTYPE") ||
+          rawMessage.includes("<html") ||
+          rawMessage.trim().startsWith("<"))
+      ) {
+        const match =
+          rawMessage.match(/<pre>(.*?)<\/pre>/i) ||
+          rawMessage.match(/<title>(.*?)<\/title>/i);
+        rawMessage = match
+          ? match[1].replace(/<[^>]+>/g, "").trim()
+          : response.status === 404
+          ? "The requested endpoint was not found on the server."
+          : `Request failed with status ${response.status}`;
+      }
+
+      const apiError: any = new Error(rawMessage);
       apiError.status = response.status;
       apiError.data = data;
       throw apiError;

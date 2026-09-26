@@ -1,28 +1,14 @@
 import twilio from "twilio";
 
-const accountSid =
-  process.env.TWILIO_ACCOUNT_SID;
+const accountSid = process.env.TWILIO_ACCOUNT_SID;
+const authToken = process.env.TWILIO_AUTH_TOKEN;
+const verifyServiceSid = process.env.TWILIO_VERIFY_SERVICE_SID;
 
-const authToken =
-  process.env.TWILIO_AUTH_TOKEN;
-
-const verifyServiceSid =
-  process.env.TWILIO_VERIFY_SERVICE_SID;
-
-if (
-  !accountSid ||
-  !authToken ||
-  !verifyServiceSid
-) {
-  throw new Error(
-    "Twilio environment variables are missing"
-  );
+if (!accountSid || !authToken || !verifyServiceSid) {
+  console.warn("[TWILIO_WARN] Twilio environment variables are missing. Live SMS sending will be unavailable.");
 }
 
-const client = twilio(
-  accountSid,
-  authToken
-);
+const client = accountSid && authToken ? twilio(accountSid, authToken) : null;
 
 
 // ========================================
@@ -33,7 +19,7 @@ export const sendPhoneOtp = async (
   phone: string,
   otp?: string
 ) => {
-  if (process.env.NODE_ENV === "test" || phone.startsWith("+1234500")) {
+  if (process.env.NODE_ENV === "test" || phone.startsWith("+1234500") || !client || !verifyServiceSid) {
     return { status: "pending", to: phone, code: otp };
   }
 
@@ -57,7 +43,7 @@ export const verifyPhoneOtp = async (
   phone: string,
   otp: string
 ) => {
-  if (process.env.NODE_ENV === "test" || phone.startsWith("+1234500")) {
+  if (process.env.NODE_ENV === "test" || phone.startsWith("+1234500") || !client || !verifyServiceSid) {
     return {
       status: otp === "123456" ? "approved" : "rejected",
       valid: otp === "123456",

@@ -439,7 +439,7 @@ export default function ProfileVerificationModals({
       }
     }
 
-    // 3. CHANGE EMAIL (Cross-Verification via Mobile Number)
+    // 3. CHANGE EMAIL
     else if (activeModal === "change-email") {
       // Edge Case 1: Existing mobile number is NOT verified
       if (!isPhoneVerified || !phone) {
@@ -449,41 +449,12 @@ export default function ProfileVerificationModals({
       }
 
       setModalStep(1);
-      setModalLoading(true);
-      isInitiatingRef.current = true;
-      apiRequest<any>("/api/auth/change-email/initiate-cross-verification", {
-        method: "POST",
-      })
-        .then((res) => {
-          const masked = res?.maskedPhone || maskPhone(phone, countryCode);
-          const cid = res?.challengeId || "";
-          const resendAt = res?.resendAvailableAt || Date.now() + 60 * 1000;
-
-          setChallengeId(cid);
-          setMaskedContact(masked);
-          setTargetResendAvailableAt(resendAt);
-
-          savePendingVerification({
-            type: "change-email",
-            challengeId: cid,
-            step: 1,
-            maskedContact: masked,
-            resendAvailableAt: resendAt,
-            expiresAt: res?.expiresAt,
-          });
-
-          showToast.info("Verification code sent to your registered mobile number");
-        })
-        .catch((err: any) => {
-          setModalError(err?.message || "Failed to initiate mobile verification.");
-        })
-        .finally(() => {
-          setModalLoading(false);
-          isInitiatingRef.current = false;
-        });
+      setModalError("");
+      setModalOtp("");
+      setModalInput("");
     }
 
-    // 4. CHANGE MOBILE NUMBER (Cross-Verification via Email Address)
+    // 4. CHANGE MOBILE NUMBER
     else if (activeModal === "change-phone") {
       setModalCountryCode(countryCode || "+91");
 
@@ -495,40 +466,11 @@ export default function ProfileVerificationModals({
       }
 
       setModalStep(1);
-      setModalLoading(true);
-      isInitiatingRef.current = true;
-      apiRequest<any>("/api/auth/change-phone/initiate-cross-verification", {
-        method: "POST",
-      })
-        .then((res) => {
-          const masked = res?.maskedEmail || maskEmail(email);
-          const cid = res?.challengeId || "";
-          const resendAt = res?.resendAvailableAt || Date.now() + 60 * 1000;
-
-          setChallengeId(cid);
-          setMaskedContact(masked);
-          setTargetResendAvailableAt(resendAt);
-
-          savePendingVerification({
-            type: "change-phone",
-            challengeId: cid,
-            step: 1,
-            maskedContact: masked,
-            resendAvailableAt: resendAt,
-            expiresAt: res?.expiresAt,
-          });
-
-          showToast.info("Verification code sent to your registered email address");
-        })
-        .catch((err: any) => {
-          setModalError(err?.message || "Failed to initiate email verification.");
-        })
-        .finally(() => {
-          setModalLoading(false);
-          isInitiatingRef.current = false;
-        });
+      setModalError("");
+      setModalOtp("");
+      setModalInput("");
     }
-  }, [activeModal, isEmailVerified, isPhoneVerified, email, phone, countryCode, challengeId, isRestoring, onSuccess, setActiveModal]);
+  }, [activeModal, isEmailVerified, isPhoneVerified, email, phone, countryCode, challengeId, isRestoring]);
 
   // Launch verify email directly from reminder popup or edge-case warning
   const triggerVerifyEmail = () => {
@@ -626,7 +568,116 @@ export default function ProfileVerificationModals({
   };
 
   // -----------------------------------------------------
-  // HANDLERS: CROSS-VERIFICATION STEP 1 (VERIFY EXISTING)
+  // HANDLERS: STEP 1 (INPUT NEW CONTACT & INITIATE CROSS-VERIFICATION)
+  // -----------------------------------------------------
+
+  const handleInitiateChangeContact = async () => {
+    const val = modalInput.trim();
+    if (!val) {
+      setModalError(
+        activeModal === "change-email"
+          ? "Please enter your new email address."
+          : "Please enter your new mobile number."
+      );
+      return;
+    }
+
+    if (activeModal === "change-email") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(val)) {
+        setModalError("Please enter a valid email address.");
+        return;
+      }
+      if (val.toLowerCase() === email.toLowerCase()) {
+        setModalError("New email cannot be the same as your current email.");
+        return;
+      }
+    } else if (activeModal === "change-phone") {
+      const digits = val.replace(/\D/g, "");
+      if (digits.length < 6 || digits.length > 15) {
+        setModalError("Please enter a valid mobile number (6 to 15 digits).");
+        return;
+      }
+      if (val === phone) {
+        setModalError("New number cannot be the same as your current number.");
+        return;
+      }
+    }
+
+    setModalLoading(true);
+    setModalError("");
+
+    try {
+      if (activeModal === "change-email") {
+        const res = await apiRequest<any>("/api/auth/change-email/initiate-cross-verification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ newEmail: val }),
+        });
+
+        const masked = res?.maskedPhone || maskPhone(phone, countryCode);
+        const cid = res?.challengeId || "";
+        const resendAt = res?.resendAvailableAt || Date.now() + 60 * 1000;
+
+        setChallengeId(cid);
+        setMaskedContact(masked);
+        setTargetResendAvailableAt(resendAt);
+        setModalOtp("");
+        setModalStep(2);
+
+        savePendingVerification({
+          type: "change-email",
+          challengeId: cid,
+          step: 2,
+          maskedContact: masked,
+          newInput: val,
+          resendAvailableAt: resendAt,
+          expiresAt: res?.expiresAt,
+        });
+
+        showToast.info("Verification code sent to your registered mobile number");
+      } else if (activeModal === "change-phone") {
+        const res = await apiRequest<any>("/api/auth/change-phone/initiate-cross-verification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            newPhone: val,
+            countryCode: modalCountryCode,
+          }),
+        });
+
+        const masked = res?.maskedEmail || maskEmail(email);
+        const cid = res?.challengeId || "";
+        const resendAt = res?.resendAvailableAt || Date.now() + 60 * 1000;
+
+        setChallengeId(cid);
+        setMaskedContact(masked);
+        setTargetResendAvailableAt(resendAt);
+        setModalOtp("");
+        setModalStep(2);
+
+        savePendingVerification({
+          type: "change-phone",
+          challengeId: cid,
+          step: 2,
+          maskedContact: masked,
+          newInput: val,
+          newCountryCode: modalCountryCode,
+          resendAvailableAt: resendAt,
+          expiresAt: res?.expiresAt,
+        });
+
+        showToast.info("Verification code sent to your registered email address");
+      }
+    } catch (err: any) {
+      setModalError(err?.message || "Failed to initiate verification.");
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  // -----------------------------------------------------
+  // HANDLERS: STEP 2 (VERIFY EXISTING PARTNER CONTACT)
   // -----------------------------------------------------
 
   const handleVerifyCrossOtp = async () => {
@@ -646,23 +697,26 @@ export default function ProfileVerificationModals({
         });
         const newToken = res?.crossVerificationToken || "";
         const cid = res?.challengeId || challengeId;
+        const resendAt = res?.resendAvailableAt || Date.now() + 60 * 1000;
+
         setCrossToken(newToken);
         setChallengeId(cid);
-        setModalStep(2);
+        setModalStep(3);
         setModalOtp("");
-        setModalInput("");
-        setTargetResendAvailableAt(0);
+        setTargetResendAvailableAt(resendAt);
 
         savePendingVerification({
           type: "change-email",
           challengeId: cid,
-          step: 2,
-          maskedContact,
+          step: 3,
+          maskedContact: res?.maskedEmail || maskEmail(modalInput),
+          newInput: modalInput,
           crossToken: newToken,
+          resendAvailableAt: resendAt,
           expiresAt: res?.expiresAt,
         });
 
-        showToast.success("Mobile number verified! Enter your new email address.");
+        showToast.success(`Mobile verified! Verification code sent to ${modalInput}`);
       } else if (activeModal === "change-phone") {
         const res = await apiRequest<any>("/api/auth/change-phone/verify-cross-otp", {
           method: "POST",
@@ -671,23 +725,29 @@ export default function ProfileVerificationModals({
         });
         const newToken = res?.crossVerificationToken || "";
         const cid = res?.challengeId || challengeId;
+        const resendAt = res?.resendAvailableAt || Date.now() + 60 * 1000;
+
         setCrossToken(newToken);
         setChallengeId(cid);
-        setModalStep(2);
+        setModalStep(3);
         setModalOtp("");
-        setModalInput("");
-        setTargetResendAvailableAt(0);
+        setTargetResendAvailableAt(resendAt);
 
         savePendingVerification({
           type: "change-phone",
           challengeId: cid,
-          step: 2,
-          maskedContact,
+          step: 3,
+          maskedContact: res?.maskedPhone || maskPhone(modalInput, modalCountryCode),
+          newInput: modalInput,
+          newCountryCode: modalCountryCode,
           crossToken: newToken,
+          resendAvailableAt: resendAt,
           expiresAt: res?.expiresAt,
         });
 
-        showToast.success("Email address verified! Enter your new mobile number.");
+        showToast.success(
+          `Email verified! Verification code sent to ${formatDisplayPhone(modalInput, modalCountryCode)}`
+        );
       }
     } catch (err: any) {
       setModalError(err?.message || "Invalid or expired verification code.");
@@ -697,116 +757,7 @@ export default function ProfileVerificationModals({
   };
 
   // -----------------------------------------------------
-  // HANDLERS: CROSS-VERIFICATION STEP 2 (SEND TO NEW)
-  // -----------------------------------------------------
-
-  const handleRequestNewContact = async () => {
-    const val = modalInput.trim();
-    if (!val) {
-      setModalError(
-        activeModal === "change-email"
-          ? "Please enter a new email address."
-          : "Please enter a new mobile number."
-      );
-      return;
-    }
-
-    if (activeModal === "change-email") {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(val)) {
-        setModalError("Please enter a valid email address.");
-        return;
-      }
-      if (val.toLowerCase() === email.toLowerCase()) {
-        setModalError("New email cannot be the same as your current email.");
-        return;
-      }
-    } else {
-      if (val === phone) {
-        setModalError("New number cannot be the same as your current number.");
-        return;
-      }
-    }
-
-    setModalLoading(true);
-    setModalError("");
-
-    try {
-      if (activeModal === "change-email") {
-        const res = await apiRequest<any>("/api/auth/change-email/request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            newEmail: val,
-            crossVerificationToken: crossToken,
-            challengeId,
-          }),
-        });
-        const resendAt = res?.resendAvailableAt || Date.now() + 60 * 1000;
-        const cid = res?.challengeId || challengeId;
-        const masked = res?.maskedEmail || maskEmail(val);
-
-        setModalStep(3);
-        setModalOtp("");
-        setTargetResendAvailableAt(resendAt);
-        setChallengeId(cid);
-
-        savePendingVerification({
-          type: "change-email",
-          challengeId: cid,
-          step: 3,
-          maskedContact: masked,
-          newInput: val,
-          crossToken,
-          resendAvailableAt: resendAt,
-          expiresAt: res?.expiresAt,
-        });
-
-        showToast.success(`Verification code sent to ${val}`);
-      } else if (activeModal === "change-phone") {
-        const res = await apiRequest<any>("/api/auth/change-phone/request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            newPhone: val,
-            countryCode: modalCountryCode,
-            crossVerificationToken: crossToken,
-            challengeId,
-          }),
-        });
-        const resendAt = res?.resendAvailableAt || Date.now() + 60 * 1000;
-        const cid = res?.challengeId || challengeId;
-
-        setModalStep(3);
-        setModalOtp("");
-        setTargetResendAvailableAt(resendAt);
-        setChallengeId(cid);
-
-        savePendingVerification({
-          type: "change-phone",
-          challengeId: cid,
-          step: 3,
-          maskedContact: formatDisplayPhone(val, modalCountryCode),
-          newInput: val,
-          newCountryCode: modalCountryCode,
-          crossToken,
-          resendAvailableAt: resendAt,
-          expiresAt: res?.expiresAt,
-        });
-
-        showToast.success(
-          `SMS verification code sent to ${formatDisplayPhone(val, modalCountryCode)}`
-        );
-      }
-    } catch (err: any) {
-      setModalError(err?.message || "Failed to send verification code.");
-    } finally {
-      setModalLoading(false);
-    }
-  };
-
-  // -----------------------------------------------------
-  // HANDLERS: CROSS-VERIFICATION STEP 3 (FINAL VERIFY & UPDATE)
+  // HANDLERS: STEP 3 (FINAL VERIFY & UPDATE)
   // -----------------------------------------------------
 
   const handleConfirmNewContact = async () => {
@@ -896,7 +847,7 @@ export default function ProfileVerificationModals({
           `SMS verification code resent to ${formatDisplayPhone(phone, countryCode)}`
         );
       } else if (activeModal === "change-email") {
-        if (modalStep === 1) {
+        if (modalStep === 2) {
           const res = await apiRequest<any>("/api/auth/change-email/resend-cross-otp", {
             method: "POST",
           });
@@ -905,8 +856,9 @@ export default function ProfileVerificationModals({
           savePendingVerification({
             type: "change-email",
             challengeId: res?.challengeId || challengeId,
-            step: 1,
+            step: 2,
             maskedContact: res?.maskedPhone || maskedContact,
+            newInput: modalInput.trim(),
             resendAvailableAt: resendAt,
             expiresAt: res?.expiresAt,
           });
@@ -936,7 +888,7 @@ export default function ProfileVerificationModals({
           showToast.success(`Verification code resent to ${modalInput.trim()}`);
         }
       } else if (activeModal === "change-phone") {
-        if (modalStep === 1) {
+        if (modalStep === 2) {
           const res = await apiRequest<any>("/api/auth/change-phone/resend-cross-otp", {
             method: "POST",
           });
@@ -945,8 +897,10 @@ export default function ProfileVerificationModals({
           savePendingVerification({
             type: "change-phone",
             challengeId: res?.challengeId || challengeId,
-            step: 1,
+            step: 2,
             maskedContact: res?.maskedEmail || maskedContact,
+            newInput: modalInput.trim(),
+            newCountryCode: modalCountryCode,
             resendAvailableAt: resendAt,
             expiresAt: res?.expiresAt,
           });
@@ -1130,9 +1084,9 @@ export default function ProfileVerificationModals({
                   {modalStep === "unverified_partner" ? (
                     <ShieldAlert size={20} className="text-[#B87916] dark:text-[#F3BA65]" />
                   ) : activeModal === "change-email" ? (
-                    modalStep === 1 ? <Phone size={20} /> : <Mail size={20} />
+                    modalStep === 1 ? <Mail size={20} /> : modalStep === 2 ? <Phone size={20} /> : <Mail size={20} />
                   ) : activeModal === "change-phone" ? (
-                    modalStep === 1 ? <Mail size={20} /> : <Phone size={20} />
+                    modalStep === 1 ? <Phone size={20} /> : modalStep === 2 ? <Mail size={20} /> : <Phone size={20} />
                   ) : activeModal === "verify-email" ? (
                     <Mail size={20} />
                   ) : (
@@ -1153,18 +1107,18 @@ export default function ProfileVerificationModals({
                     {activeModal === "change-email" &&
                       modalStep !== "unverified_partner" &&
                       (modalStep === 1
-                        ? "Verify your mobile number"
-                        : modalStep === 2
                         ? "Change Email Address"
-                        : "Verify new email address")}
+                        : modalStep === 2
+                        ? "Verify Registered Mobile"
+                        : "Verify New Email Address")}
 
                     {activeModal === "change-phone" &&
                       modalStep !== "unverified_partner" &&
                       (modalStep === 1
-                        ? "Verify your email address"
-                        : modalStep === 2
                         ? "Change Mobile Number"
-                        : "Verify new mobile number")}
+                        : modalStep === 2
+                        ? "Verify Registered Email"
+                        : "Verify New Mobile Number")}
                   </h3>
 
                   <p className="text-xs text-[#7B8F9A] dark:text-[#9FB6C0]">
@@ -1178,17 +1132,17 @@ export default function ProfileVerificationModals({
                     {activeModal === "change-email" &&
                       modalStep !== "unverified_partner" &&
                       (modalStep === 1
-                        ? `Enter code sent to ${maskedContact || maskPhone(phone, countryCode)}`
+                        ? "Enter your new email address to begin."
                         : modalStep === 2
-                        ? "Enter your new email address"
-                        : `Enter the OTP sent to ${modalInput}`)}
+                        ? `Enter the code sent to ${maskedContact || maskPhone(phone, countryCode)}`
+                        : `Enter the verification code sent to ${modalInput}`)}
 
                     {activeModal === "change-phone" &&
                       modalStep !== "unverified_partner" &&
                       (modalStep === 1
-                        ? `Enter code sent to ${maskedContact || maskEmail(email)}`
+                        ? "Enter your new mobile number to begin."
                         : modalStep === 2
-                        ? "Enter your new mobile number"
+                        ? `Enter the code sent to ${maskedContact || maskEmail(email)}`
                         : `Enter the SMS OTP sent to ${formatDisplayPhone(
                             modalInput,
                             modalCountryCode
@@ -1245,17 +1199,89 @@ export default function ProfileVerificationModals({
                     </div>
                   )}
 
-                  {/* STEP 1: CROSS-VERIFICATION (VERIFY EXISTING PARTNER CONTACT) */}
+                  {/* STEP 1: INPUT NEW CONTACT CREDENTIAL */}
                   {(activeModal === "change-email" || activeModal === "change-phone") &&
                     modalStep === 1 && (
+                      <div className="space-y-4">
+                        <div className="rounded-xl border border-[#D5EBF0] bg-[#F3FBFD] p-3 text-xs text-[#087D8F] dark:border-[#1F4550] dark:bg-[#0B252E] dark:text-[#64D4DF]">
+                          <div className="flex items-start gap-2.5">
+                            <KeyRound size={16} className="shrink-0 mt-0.5" />
+                            <p className="leading-relaxed">
+                              {activeModal === "change-email"
+                                ? `For account security, we'll send a verification code to your registered mobile number (${maskPhone(phone, countryCode)}) to authorize this change.`
+                                : `For account security, we'll send a verification code to your registered email address (${maskEmail(email)}) to authorize this change.`}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#718894] dark:text-[#9FB6C0]">
+                            {activeModal === "change-email"
+                              ? "New Email Address"
+                              : "New Mobile Number"}
+                          </label>
+
+                          {activeModal === "change-email" ? (
+                            <input
+                              type="email"
+                              placeholder="e.g. user@company.com"
+                              value={modalInput}
+                              onChange={(e) => setModalInput(e.target.value)}
+                              disabled={modalLoading}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && modalInput.trim() && !modalLoading) {
+                                  e.preventDefault();
+                                  handleInitiateChangeContact();
+                                }
+                              }}
+                              className="h-11 w-full rounded-xl border border-[#BDCED6] bg-[#FBFDFE] px-3.5 text-sm font-medium text-[#315364] outline-none transition focus:border-[#087D8F] focus:bg-white dark:border-[#3D6375] dark:bg-[#0D2430] dark:text-[#D7E7EC]"
+                            />
+                          ) : (
+                            <div className="flex gap-2">
+                              <input
+                                type="text"
+                                placeholder="+91"
+                                value={modalCountryCode}
+                                onChange={(e) => setModalCountryCode(e.target.value)}
+                                disabled={modalLoading}
+                                className="h-11 w-20 rounded-xl border border-[#BDCED6] bg-[#FBFDFE] px-3 text-center text-sm font-medium text-[#315364] outline-none transition focus:border-[#087D8F] dark:border-[#3D6375] dark:bg-[#0D2430] dark:text-[#D7E7EC]"
+                              />
+                              <input
+                                type="tel"
+                                placeholder="e.g. 9876543210"
+                                value={modalInput}
+                                onChange={(e) => setModalInput(e.target.value)}
+                                disabled={modalLoading}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" && modalInput.trim() && !modalLoading) {
+                                    e.preventDefault();
+                                    handleInitiateChangeContact();
+                                  }
+                                }}
+                                className="h-11 flex-1 rounded-xl border border-[#BDCED6] bg-[#FBFDFE] px-3.5 text-sm font-medium text-[#315364] outline-none transition focus:border-[#087D8F] focus:bg-white dark:border-[#3D6375] dark:bg-[#0D2430] dark:text-[#D7E7EC]"
+                              />
+                            </div>
+                          )}
+                          <p className="mt-1.5 text-[11px] text-[#8A9CA5] dark:text-[#8FA8B2]">
+                            {activeModal === "change-email"
+                              ? "You'll verify this email address after authorising via your mobile number."
+                              : "You'll verify this mobile number after authorising via your email address."}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                  {/* STEP 2: CROSS-VERIFICATION (VERIFY EXISTING PARTNER CONTACT) */}
+                  {(activeModal === "change-email" || activeModal === "change-phone") &&
+                    modalStep === 2 && (
                       <div>
                         <div className="mb-3 rounded-xl border border-[#D5EBF0] bg-[#F3FBFD] p-3 text-[11px] font-medium text-[#087D8F] dark:border-[#1F4550] dark:bg-[#0B252E] dark:text-[#64D4DF]">
                           <div className="flex items-center gap-2">
                             <KeyRound size={14} className="shrink-0" />
                             <span>
                               {activeModal === "change-email"
-                                ? "Step 1/2: Verify existing mobile number"
-                                : "Step 1/2: Verify existing email address"}
+                                ? "Step 1 of 2: Authorize change with registered mobile number"
+                                : "Step 1 of 2: Authorize change with registered email address"}
                             </span>
                           </div>
                         </div>
@@ -1271,6 +1297,12 @@ export default function ProfileVerificationModals({
                           onChange={(e) =>
                             setModalOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
                           }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && modalOtp.trim().length === 6 && !modalLoading) {
+                              e.preventDefault();
+                              handleVerifyCrossOtp();
+                            }
+                          }}
                           disabled={modalLoading}
                           className="h-12 w-full rounded-xl border border-[#BDCED6] bg-[#FBFDFE] text-center font-mono text-xl font-bold tracking-[0.4em] text-[#063D63] outline-none transition focus:border-[#087D8F] focus:bg-white dark:border-[#3D6375] dark:bg-[#0D2430] dark:text-white"
                         />
@@ -1298,66 +1330,23 @@ export default function ProfileVerificationModals({
                       </div>
                     )}
 
-                  {/* STEP 2: INPUT NEW CONTACT CREDENTIAL */}
-                  {(activeModal === "change-email" || activeModal === "change-phone") &&
-                    modalStep === 2 && (
-                      <div>
-                        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-[#EAF9F4] px-3 py-1 text-[10px] font-bold text-[#159779] dark:bg-[#123C35] dark:text-[#5FE3BE]">
-                          <CheckCircle2 size={12} />
-                          <span>
-                            {activeModal === "change-email"
-                              ? "Mobile Number Verified"
-                              : "Email Address Verified"}
-                          </span>
-                        </div>
-
-                        <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#718894] dark:text-[#9FB6C0]">
-                          {activeModal === "change-email"
-                            ? "New Email Address"
-                            : "New Mobile Number"}
-                        </label>
-
-                        {activeModal === "change-email" ? (
-                          <input
-                            type="email"
-                            placeholder="e.g. user@company.com"
-                            value={modalInput}
-                            onChange={(e) => setModalInput(e.target.value)}
-                            disabled={modalLoading}
-                            className="h-11 w-full rounded-xl border border-[#BDCED6] bg-[#FBFDFE] px-3.5 text-sm font-medium text-[#315364] outline-none transition focus:border-[#087D8F] focus:bg-white dark:border-[#3D6375] dark:bg-[#0D2430] dark:text-[#D7E7EC]"
-                          />
-                        ) : (
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              placeholder="+91"
-                              value={modalCountryCode}
-                              onChange={(e) => setModalCountryCode(e.target.value)}
-                              disabled={modalLoading}
-                              className="h-11 w-20 rounded-xl border border-[#BDCED6] bg-[#FBFDFE] px-3 text-center text-sm font-medium text-[#315364] outline-none transition focus:border-[#087D8F] dark:border-[#3D6375] dark:bg-[#0D2430] dark:text-[#D7E7EC]"
-                            />
-                            <input
-                              type="tel"
-                              placeholder="e.g. 9876543210"
-                              value={modalInput}
-                              onChange={(e) => setModalInput(e.target.value)}
-                              disabled={modalLoading}
-                              className="h-11 flex-1 rounded-xl border border-[#BDCED6] bg-[#FBFDFE] px-3.5 text-sm font-medium text-[#315364] outline-none transition focus:border-[#087D8F] focus:bg-white dark:border-[#3D6375] dark:bg-[#0D2430] dark:text-[#D7E7EC]"
-                            />
-                          </div>
-                        )}
-                        <p className="mt-1.5 text-[11px] text-[#8A9CA5] dark:text-[#8FA8B2]">
-                          A 6-digit verification code will be sent to confirm ownership.
-                        </p>
-                      </div>
-                    )}
-
                   {/* STEP 3 OR DIRECT INITIAL: VERIFY NEW CONTACT OTP */}
                   {(((activeModal === "change-email" || activeModal === "change-phone") &&
                     modalStep === 3) ||
                     activeModal === "verify-email" ||
                     activeModal === "verify-phone") && (
                     <div>
+                      {(activeModal === "change-email" || activeModal === "change-phone") && (
+                        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-[#EAF9F4] px-3 py-1 text-[10px] font-bold text-[#159779] dark:bg-[#123C35] dark:text-[#5FE3BE]">
+                          <CheckCircle2 size={12} />
+                          <span>
+                            {activeModal === "change-email"
+                              ? "Identity Verified via Mobile • Step 2 of 2"
+                              : "Identity Verified via Email • Step 2 of 2"}
+                          </span>
+                        </div>
+                      )}
+
                       <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-[#718894] dark:text-[#9FB6C0]">
                         6-Digit Verification Code
                       </label>
@@ -1369,6 +1358,18 @@ export default function ProfileVerificationModals({
                         onChange={(e) =>
                           setModalOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
                         }
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && modalOtp.trim().length === 6 && !modalLoading) {
+                            e.preventDefault();
+                            if (activeModal === "verify-email") {
+                              handleConfirmVerifyEmail();
+                            } else if (activeModal === "verify-phone") {
+                              handleConfirmVerifyPhone();
+                            } else {
+                              handleConfirmNewContact();
+                            }
+                          }
+                        }}
                         disabled={modalLoading}
                         className="h-12 w-full rounded-xl border border-[#BDCED6] bg-[#FBFDFE] text-center font-mono text-xl font-bold tracking-[0.4em] text-[#063D63] outline-none transition focus:border-[#087D8F] focus:bg-white dark:border-[#3D6375] dark:bg-[#0D2430] dark:text-white"
                       />
@@ -1431,23 +1432,23 @@ export default function ProfileVerificationModals({
                     modalStep === 1 ? (
                     <button
                       type="button"
+                      disabled={modalLoading || !modalInput.trim()}
+                      onClick={handleInitiateChangeContact}
+                      className="flex items-center gap-2 rounded-xl bg-[#063D63] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#052F4D] disabled:opacity-60 dark:bg-[#087D8F] dark:hover:bg-[#0798AA]"
+                    >
+                      {modalLoading ? <Loader2 size={14} className="animate-spin" /> : null}
+                      <span>Continue</span>
+                    </button>
+                  ) : (activeModal === "change-email" || activeModal === "change-phone") &&
+                    modalStep === 2 ? (
+                    <button
+                      type="button"
                       disabled={modalLoading || modalOtp.length < 6}
                       onClick={handleVerifyCrossOtp}
                       className="flex items-center gap-2 rounded-xl bg-[#063D63] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#052F4D] disabled:opacity-60 dark:bg-[#087D8F] dark:hover:bg-[#0798AA]"
                     >
                       {modalLoading ? <Loader2 size={14} className="animate-spin" /> : null}
                       <span>Verify & Continue</span>
-                    </button>
-                  ) : (activeModal === "change-email" || activeModal === "change-phone") &&
-                    modalStep === 2 ? (
-                    <button
-                      type="button"
-                      disabled={modalLoading || !modalInput.trim()}
-                      onClick={handleRequestNewContact}
-                      className="flex items-center gap-2 rounded-xl bg-[#063D63] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#052F4D] disabled:opacity-60 dark:bg-[#087D8F] dark:hover:bg-[#0798AA]"
-                    >
-                      {modalLoading ? <Loader2 size={14} className="animate-spin" /> : null}
-                      <span>Send Verification Code</span>
                     </button>
                   ) : (
                     <button
@@ -1468,7 +1469,11 @@ export default function ProfileVerificationModals({
                       className="flex items-center gap-2 rounded-xl bg-[#063D63] px-5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-[#052F4D] disabled:opacity-60 dark:bg-[#087D8F] dark:hover:bg-[#0798AA]"
                     >
                       {modalLoading ? <Loader2 size={14} className="animate-spin" /> : null}
-                      <span>Verify & Update</span>
+                      <span>
+                        {activeModal === "verify-email" || activeModal === "verify-phone"
+                          ? "Verify Now"
+                          : "Verify & Update"}
+                      </span>
                     </button>
                   )}
                 </div>
