@@ -5,6 +5,8 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
+  ChevronDown,
+  Download,
   Flame,
   ListTodo,
   RefreshCw,
@@ -16,9 +18,11 @@ import {
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLanguage } from "@/context/LanguageContext";
 import { apiRequest } from "@/service/api.service";
+import { downloadExportFile, ExportFormat } from "@/service/export.service";
+import { showToast } from "@/lib/toast";
 import {
   StatCard,
   SectionCard,
@@ -97,6 +101,38 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleExport = async (format: ExportFormat) => {
+    setExportMenuOpen(false);
+    if (isExporting) return;
+    setIsExporting(true);
+
+    try {
+      await downloadExportFile({
+        scope: "reports",
+        format,
+      });
+      showToast.success(`Report exported successfully as ${format.toUpperCase()}`);
+    } catch (err: any) {
+      console.error("[REPORTS] Export error:", err);
+      showToast.error(err?.message || "Failed to export report. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const loadReports = useCallback(async (isRefresh = false) => {
     try {
@@ -204,6 +240,65 @@ export default function ReportsPage() {
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
+          {/* Export Dropdown */}
+          <div className="relative" ref={exportDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setExportMenuOpen((prev) => !prev)}
+              disabled={isExporting}
+              className="inline-flex h-[38px] items-center gap-1.5 rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[13px] font-semibold text-[#0F172A] shadow-xs hover:bg-[#F8FAFC] dark:border-[#1E3A47] dark:bg-[#0B202B] dark:text-white dark:hover:bg-[#102A36] transition cursor-pointer disabled:opacity-60"
+              title="Export your performance report"
+            >
+              {isExporting ? (
+                <RefreshCw size={14} className="animate-spin text-[#0284C7] dark:text-[#38BDF8]" />
+              ) : (
+                <Download size={14} className="text-[#0284C7] dark:text-[#38BDF8]" />
+              )}
+              <span>{isExporting ? "Exporting..." : "Export Report"}</span>
+              <ChevronDown size={13} className={`text-slate-400 transition-transform ${exportMenuOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {exportMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-[#CBD5E1] bg-white py-1.5 shadow-xl dark:border-[#1E3A47] dark:bg-[#0B202B]">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  Choose Format
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleExport("pdf")}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#F1F5F9] dark:text-slate-200 dark:hover:bg-[#102A36] transition"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded bg-red-100 text-[10px] font-bold text-red-700 dark:bg-red-950/60 dark:text-red-400">PDF</span>
+                  <span>PDF Document (.pdf)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport("xlsx")}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#F1F5F9] dark:text-slate-200 dark:hover:bg-[#102A36] transition"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded bg-emerald-100 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">XLS</span>
+                  <span>Excel (.xlsx)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport("csv")}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#F1F5F9] dark:text-slate-200 dark:hover:bg-[#102A36] transition"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded bg-blue-100 text-[10px] font-bold text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">CSV</span>
+                  <span>CSV Spreadsheet (.csv)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport("json")}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#F1F5F9] dark:text-slate-200 dark:hover:bg-[#102A36] transition"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded bg-amber-100 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">JSON</span>
+                  <span>Raw JSON (.json)</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={() => loadReports(true)}

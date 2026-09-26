@@ -542,3 +542,21 @@ html.reduce-motion *::after,
 .dark .responsive-table-scroll::-webkit-scrollbar-thumb {
   background: rgba(100, 116, 139, 0.5);
 }
+
+/* =====================================================
+   SIDEBAR & MOBILE NAVIGATION UTILITIES
+===================================================== */
+.sidebar-safe-top {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+.sidebar-safe-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+.sidebar-scroll-container {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+}

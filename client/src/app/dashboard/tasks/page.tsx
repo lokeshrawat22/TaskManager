@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ClipboardList,
   Clock3,
+  Download,
   Eye,
   Filter,
   LayoutGrid,
@@ -17,11 +18,13 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { apiRequest } from "@/service/api.service";
+import { downloadExportFile, ExportFormat } from "@/service/export.service";
+import { showToast } from "@/lib/toast";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   StatMiniBarChart,
@@ -113,6 +116,47 @@ function TasksContent() {
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [page, setPage] = useState(1);
   const pageSize = 10;
+
+  // Export state & dropdown
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleExport = async (format: ExportFormat) => {
+    setExportMenuOpen(false);
+    if (isExporting) return;
+    setIsExporting(true);
+
+    try {
+      const params: Record<string, string> = {
+        scope: "tasks",
+        format,
+      };
+
+      if (statusFilter && statusFilter !== "ALL") params.status = statusFilter;
+      if (priorityFilter && priorityFilter !== "ALL") params.priority = priorityFilter;
+      if (dateFilter && dateFilter !== "ALL") params.dateFilter = dateFilter;
+      if (search && search.trim()) params.search = search.trim();
+
+      await downloadExportFile(params);
+      showToast.success(`Tasks exported successfully as ${format.toUpperCase()}`);
+    } catch (err: any) {
+      console.error("[EMPLOYEE TASKS] Export error:", err);
+      showToast.error(err?.message || "Failed to export tasks. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Sync with URL search params
   useEffect(() => {
@@ -325,6 +369,65 @@ function TasksContent() {
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
+          {/* Export Dropdown */}
+          <div className="relative" ref={exportDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setExportMenuOpen((prev) => !prev)}
+              disabled={isExporting}
+              className="inline-flex h-[38px] items-center gap-1.5 rounded-[8px] border border-[#CBD5E1] bg-white px-3 text-[13px] font-semibold text-[#0F172A] shadow-xs hover:bg-[#F8FAFC] dark:border-[#1E3A47] dark:bg-[#0B202B] dark:text-white dark:hover:bg-[#102A36] transition cursor-pointer disabled:opacity-60"
+              title="Export your assigned tasks"
+            >
+              {isExporting ? (
+                <RefreshCw size={14} className="animate-spin text-[#0284C7] dark:text-[#38BDF8]" />
+              ) : (
+                <Download size={14} className="text-[#0284C7] dark:text-[#38BDF8]" />
+              )}
+              <span>{isExporting ? "Exporting..." : "Export"}</span>
+              <ChevronDown size={13} className={`text-slate-400 transition-transform ${exportMenuOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {exportMenuOpen && (
+              <div className="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-[#CBD5E1] bg-white py-1.5 shadow-xl dark:border-[#1E3A47] dark:bg-[#0B202B]">
+                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  Export Format
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleExport("xlsx")}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#F1F5F9] dark:text-slate-200 dark:hover:bg-[#102A36] transition"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded bg-emerald-100 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">XLS</span>
+                  <span>Excel (.xlsx)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport("csv")}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#F1F5F9] dark:text-slate-200 dark:hover:bg-[#102A36] transition"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded bg-blue-100 text-[10px] font-bold text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">CSV</span>
+                  <span>CSV Spreadsheet (.csv)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport("pdf")}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#F1F5F9] dark:text-slate-200 dark:hover:bg-[#102A36] transition"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded bg-red-100 text-[10px] font-bold text-red-700 dark:bg-red-950/60 dark:text-red-400">PDF</span>
+                  <span>PDF Document (.pdf)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleExport("json")}
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#F1F5F9] dark:text-slate-200 dark:hover:bg-[#102A36] transition"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded bg-amber-100 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">JSON</span>
+                  <span>Raw JSON (.json)</span>
+                </button>
+              </div>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={() => fetchTasks(true)}
@@ -691,22 +794,22 @@ function TasksContent() {
         ================================================= */}
         {viewMode === "table" ? (
           <div className="w-full overflow-x-auto responsive-table-scroll">
-            <table className="enterprise-table w-full min-w-[760px] text-left border-collapse table-fixed border border-[#CBD5E1] dark:border-[#1E3A47]">
+            <table className="enterprise-table w-full min-w-[780px] text-left border-collapse border border-[#CBD5E1] dark:border-[#1E3A47]">
               <thead className="border-b border-[#CBD5E1] bg-[#F8FAFC] dark:border-[#1E3A47] dark:bg-[#102A36]">
                 <tr className="h-[40px] text-[11px] font-semibold uppercase tracking-[0.04em] leading-[16px] text-[#475569] dark:text-[#CBD5E1] border-b border-[#CBD5E1] dark:border-[#1E3A47]">
-                  <th className="w-[42%] px-5 py-2.5 font-semibold border-b border-[#CBD5E1] dark:border-[#1E3A47]">
+                  <th className="px-5 py-2.5 font-semibold border-b border-[#CBD5E1] dark:border-[#1E3A47] text-left">
                     {t("tasks.task") || (language === "hi" ? "कार्य" : "TASK")}
                   </th>
-                  <th className="w-[15%] px-4 py-2.5 font-semibold border-b border-[#CBD5E1] dark:border-[#1E3A47]">
+                  <th className="px-4 py-2.5 font-semibold border-b border-[#CBD5E1] dark:border-[#1E3A47] text-left whitespace-nowrap">
                     {t("tasks.priority") || (language === "hi" ? "प्राथमिकता" : "PRIORITY")}
                   </th>
-                  <th className="w-[18%] px-4 py-2.5 font-semibold border-b border-[#CBD5E1] dark:border-[#1E3A47]">
+                  <th className="px-4 py-2.5 font-semibold border-b border-[#CBD5E1] dark:border-[#1E3A47] text-left whitespace-nowrap">
                     {t("tasks.dueDate") || (language === "hi" ? "नियत तिथि" : "DUE DATE")}
                   </th>
-                  <th className="w-[15%] px-4 py-2.5 font-semibold border-b border-[#CBD5E1] dark:border-[#1E3A47]">
+                  <th className="px-4 py-2.5 font-semibold border-b border-[#CBD5E1] dark:border-[#1E3A47] text-left whitespace-nowrap">
                     {t("tasks.status") || (language === "hi" ? "स्थिति" : "STATUS")}
                   </th>
-                  <th className="w-[10%] px-5 py-2.5 font-semibold text-right border-b border-[#CBD5E1] dark:border-[#1E3A47]">
+                  <th className="px-5 py-2.5 font-semibold text-right border-b border-[#CBD5E1] dark:border-[#1E3A47] whitespace-nowrap">
                     {t("common.actions") || (language === "hi" ? "कार्रवाई" : "ACTIONS")}
                   </th>
                 </tr>
@@ -749,7 +852,7 @@ function TasksContent() {
                         className="group h-[58px] cursor-pointer bg-white border-b border-[#E5E7EB] transition-colors duration-150 hover:bg-[#F8FAFC] dark:bg-[#0B202B] dark:border-[#18333F] dark:hover:bg-[#102A36]"
                       >
                         {/* 1. TASK CELL */}
-                        <td className="px-5 py-2.5">
+                        <td className="px-5 py-2.5 min-w-[220px]">
                           <div className="flex items-center gap-3">
                             <div className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-[10px] bg-[#EFF7FB] text-[#087D8F] dark:bg-[#123C46] dark:text-[#4CD2DA] border border-[#CBD5E1] dark:border-[#2A4858]">
                               <ClipboardList size={16} strokeWidth={2.2} />
@@ -767,35 +870,35 @@ function TasksContent() {
                         </td>
 
                         {/* 2. PRIORITY */}
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-2.5 whitespace-nowrap">
                           <PriorityBadge priority={task.priority} />
                         </td>
 
                         {/* 3. DUE DATE */}
-                        <td className="px-4 py-2.5">
-                          <div
-                            className={`inline-flex items-center gap-1.5 ${
+                        <td className="px-4 py-2.5 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold tabular-nums whitespace-nowrap shrink-0 ${
                               overdue
-                                ? "text-[12px] font-semibold text-[#DC2626] dark:text-rose-300 bg-[#FFF1F2] dark:bg-rose-950/40 border border-rose-300 dark:border-rose-900/60 px-2 py-0.5 rounded-[6px]"
-                                : "text-[13px] font-medium leading-[18px] text-[#334155] dark:text-[#CBD5E1] tabular-nums"
+                                ? "border-rose-300 bg-[#FFF1F2] text-[#DC2626] dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300"
+                                : "border-[#CBD5E1] bg-[#F8FAFC] text-[#475569] dark:border-[#2A4858] dark:bg-[#123C46]/50 dark:text-[#E2E8F0]"
                             }`}
                           >
                             <CalendarDays
                               size={13}
-                              className={overdue ? "text-[#DC2626]" : "text-[#64748B] dark:text-[#8FA8B2]"}
+                              className={`shrink-0 ${overdue ? "text-[#DC2626]" : "text-[#64748B] dark:text-[#8FA8B2]"}`}
                             />
-                            <span>{formatDate(task.dueDate, language)}</span>
-                          </div>
+                            <span className="whitespace-nowrap">{formatDate(task.dueDate, language)}</span>
+                          </span>
                         </td>
 
                         {/* 4. STATUS */}
-                        <td className="px-4 py-2.5">
+                        <td className="px-4 py-2.5 whitespace-nowrap">
                           <StatusBadge status={task.status} />
                         </td>
 
                         {/* 5. ACTIONS */}
                         <td
-                          className="px-5 py-2.5 text-right cursor-default"
+                          className="px-5 py-2.5 text-right cursor-default whitespace-nowrap"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <div className="flex items-center justify-end">

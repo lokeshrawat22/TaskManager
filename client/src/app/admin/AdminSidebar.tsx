@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -253,29 +253,71 @@ export default function AdminSidebar({
     resolvePhotoUrl(activeUser?.profileImage) ||
     resolvePhotoUrl(activeUser?.avatar);
 
+  // ===================================================
+  // BODY SCROLL LOCKING & MOBILE LIFECYCLE
+  // ===================================================
+
+  // Prevent background scrolling while mobile sidebar is open
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+
+    document.body.style.overflow = "hidden";
+    document.body.style.touchAction = "none";
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+    };
+  }, [mobileOpen]);
+
+  // Automatically close mobile sidebar on navigation
+  useEffect(() => {
+    if (mobileOpen && onClose) {
+      onClose();
+    }
+  }, [pathname]);
+
+  // Close on Escape key press
+  useEffect(() => {
+    if (!mobileOpen || !onClose) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileOpen, onClose]);
+
   return (
     <>
       {/* =================================================
-          MOBILE OVERLAY
+          MOBILE OVERLAY (STOPS BACKGROUND TOUCH EVENTS)
       ================================================= */}
       {mobileOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-[#0F172A]/20 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-40 bg-[#0F172A]/40 backdrop-blur-xs lg:hidden touch-none"
+          aria-hidden="true"
         />
       )}
 
       {/* =================================================
-          SIDEBAR CONTAINER (PREMIUM MINIMAL ENTERPRISE SAAS)
+          SIDEBAR CONTAINER (FIXED VIEWPORT & SAFE AREA AWARE)
       ================================================= */}
       <aside
         className={`
           fixed
+          inset-y-0
           left-0
-          top-0
           z-50
           flex
-          h-screen
+          h-[100vh]
+          h-[100dvh]
+          max-h-[100dvh]
           w-[248px]
           flex-col
           overflow-hidden
@@ -286,14 +328,15 @@ export default function AdminSidebar({
           dark:bg-[#081A24]
           transition-transform
           duration-300
+          ease-in-out
           lg:translate-x-0
-          ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+          ${mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full pointer-events-none lg:pointer-events-auto"}
         `}
       >
         {/* =================================================
             HEADER: LOGO & ADMIN WORKSPACE CARD
         ================================================= */}
-        <div className="shrink-0 pt-4 px-3.5 pb-2">
+        <div className="shrink-0 sidebar-safe-top px-3.5 pb-2">
           {/* Top Logo & Mobile Close */}
           <div className="flex items-center justify-between px-1 mb-3">
             <Link
@@ -348,7 +391,7 @@ export default function AdminSidebar({
         {/* =================================================
             NAVIGATION ITEMS (Scrollable, Clean Spacing)
         ================================================= */}
-        <nav className="flex-1 overflow-y-auto px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden space-y-4">
+        <nav className="flex-1 sidebar-scroll-container px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden space-y-4">
           {navigation.map((group) => (
             <div key={group.section}>
               {/* Section Header */}
@@ -437,7 +480,7 @@ export default function AdminSidebar({
         {/* =================================================
             FOOTER: USER PROFILE (Section 3: Compact, Subtle Top Border)
         ================================================= */}
-        <div className="shrink-0 border-t border-[#CBD5E1] dark:border-[#1E3A47] bg-white dark:bg-[#081A24] p-3 transition-colors">
+        <div className="shrink-0 border-t border-[#CBD5E1] dark:border-[#1E3A47] bg-white dark:bg-[#081A24] p-3 sidebar-safe-bottom transition-colors">
           <div className="flex items-center justify-between gap-2.5">
             {/* Clickable Profile Info */}
             <Link

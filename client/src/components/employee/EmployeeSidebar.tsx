@@ -207,6 +207,40 @@ export default function EmployeeSidebar({
     };
   }, [initialUser, currentUser]);
 
+  // Lock background scroll when mobile drawer is open
+  useEffect(() => {
+    if (mobileOpen) {
+      const originalOverflow = document.body.style.overflow;
+      const originalTouchAction = document.body.style.touchAction;
+
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
+
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        document.body.style.touchAction = originalTouchAction;
+      };
+    }
+  }, [mobileOpen]);
+
+  // Auto close mobile drawer on route change
+  useEffect(() => {
+    if (mobileOpen && onClose) {
+      onClose();
+    }
+  }, [pathname]);
+
+  // Auto close mobile drawer on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && mobileOpen && onClose) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [mobileOpen, onClose]);
+
   const navigation = getNavigation(t, unreadCount);
 
   // Sign out handler
@@ -245,7 +279,7 @@ export default function EmployeeSidebar({
       {mobileOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 z-40 bg-[#0F172A]/20 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-40 bg-[#0F172A]/40 backdrop-blur-xs lg:hidden touch-none"
         />
       )}
 
@@ -255,29 +289,32 @@ export default function EmployeeSidebar({
       <aside
         className={`
           fixed
+          inset-y-0
           left-0
-          top-0
           z-50
           flex
-          h-screen
+          h-[100vh]
+          h-[100dvh]
+          max-h-[100dvh]
           w-[248px]
           flex-col
           overflow-hidden
           border-r
-          border-[#E5E7EB]
+          border-[#CBD5E1]
           dark:border-[#1E3A47]
           bg-[#FFFFFF]
           dark:bg-[#081A24]
           transition-transform
           duration-300
+          ease-in-out
           lg:translate-x-0
-          ${mobileOpen ? "translate-x-0" : "-translate-x-full"}
+          ${mobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none lg:pointer-events-auto"}
         `}
       >
         {/* =================================================
             HEADER: LOGO & EMPLOYEE WORKSPACE CARD
         ================================================= */}
-        <div className="shrink-0 pt-4 px-3.5 pb-2">
+        <div className="shrink-0 pt-4 px-3.5 pb-2 sidebar-safe-top">
           {/* Top Logo & Mobile Close */}
           <div className="flex items-center justify-between px-1 mb-3">
             <Link
@@ -332,7 +369,7 @@ export default function EmployeeSidebar({
         {/* =================================================
             NAVIGATION ITEMS (Scrollable, Clean Spacing)
         ================================================= */}
-        <nav className="flex-1 overflow-y-auto px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden space-y-4">
+        <nav className="flex-1 sidebar-scroll-container px-3 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden space-y-4">
           {navigation.map((group) => (
             <div key={group.section}>
               {/* Section Header */}
@@ -421,7 +458,7 @@ export default function EmployeeSidebar({
         {/* =================================================
             FOOTER: USER PROFILE (Compact, Subtle Top Border)
         ================================================= */}
-        <div className="shrink-0 border-t border-[#CBD5E1] dark:border-[#1E3A47] bg-white dark:bg-[#081A24] p-3 transition-colors">
+        <div className="shrink-0 border-t border-[#CBD5E1] dark:border-[#1E3A47] bg-white dark:bg-[#081A24] p-3 sidebar-safe-bottom transition-colors">
           <div className="flex items-center justify-between gap-2.5">
             {/* Clickable Profile Info */}
             <Link

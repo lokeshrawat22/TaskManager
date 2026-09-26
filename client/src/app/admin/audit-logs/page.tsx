@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Activity,
@@ -263,6 +263,20 @@ export default function AuditLogsPage() {
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [copiedRowId, setCopiedRowId] = useState<string | null>(null);
 
+  // Export dropdown state
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // 1. Consume Current User Role from AuthContext
   useEffect(() => {
     if (currentUser) {
@@ -350,11 +364,14 @@ export default function AuditLogsPage() {
 
   // Export Logs as JSON
   const handleExportJson = () => {
-    const dataStr =
-      "data:text/json;charset=utf-8," +
-      encodeURIComponent(JSON.stringify(logs, null, 2));
+    setExportMenuOpen(false);
+    if (logs.length === 0) return;
+    const blob = new Blob([JSON.stringify(logs, null, 2)], {
+      type: "application/json;charset=utf-8;",
+    });
+    const url = URL.createObjectURL(blob);
     const downloadAnchor = document.createElement("a");
-    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("href", url);
     downloadAnchor.setAttribute(
       "download",
       `mindmatrix_audit_logs_${new Date().toISOString().slice(0, 10)}.json`
@@ -362,7 +379,38 @@ export default function AuditLogsPage() {
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
     downloadAnchor.remove();
-    showToast.success(t("auditLogs.downloadedSuccess"));
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast.success(t("auditLogs.downloadedSuccess") || "Audit logs JSON exported successfully.");
+  };
+
+  // Export Logs as CSV
+  const handleExportCsv = () => {
+    setExportMenuOpen(false);
+    if (logs.length === 0) return;
+    const headers = ["Timestamp", "Event Type", "User Name", "User Email", "Role", "Status", "IP Address", "Action", "Details"];
+    const rows = logs.map((l) => [
+      `"${new Date(l.timestamp).toISOString()}"`,
+      `"${(l.eventType || "").replace(/"/g, '""')}"`,
+      `"${(l.userName || "").replace(/"/g, '""')}"`,
+      `"${(l.userEmail || "").replace(/"/g, '""')}"`,
+      `"${(l.role || l.userRole || "").replace(/"/g, '""')}"`,
+      `"${(l.status || "").replace(/"/g, '""')}"`,
+      `"${(l.ipAddress || l.ip || "").replace(/"/g, '""')}"`,
+      `"${(l.action || "").replace(/"/g, '""')}"`,
+      `"${JSON.stringify(l.details || {}).replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = "\uFEFF" + [headers.join(","), ...rows.map((r) => r.join(","))].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `mindmatrix_audit_logs_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast.success("Audit logs CSV exported successfully.");
   };
 
   const handleCopyLogDetails = (log: AuditLog) => {
@@ -457,14 +505,43 @@ export default function AuditLogsPage() {
               <span>{t("auditLogs.refresh")}</span>
             </button>
 
-            <button
-              onClick={handleExportJson}
-              disabled={logs.length === 0}
-              className="inline-flex h-9 items-center gap-2 rounded-xl bg-[#063B61] px-4 text-xs font-semibold text-white shadow-2xs transition hover:bg-[#052F4D] dark:bg-[#0879D9] dark:hover:bg-[#0665B6] disabled:opacity-50"
-            >
-              <Download size={14} />
-              <span>{t("auditLogs.exportLogs")}</span>
-            </button>
+            {/* Export Dropdown */}
+            <div className="relative" ref={exportDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setExportMenuOpen((prev) => !prev)}
+                disabled={logs.length === 0}
+                className="inline-flex h-9 items-center gap-2 rounded-xl bg-[#063B61] px-4 text-xs font-semibold text-white shadow-2xs transition hover:bg-[#052F4D] dark:bg-[#0879D9] dark:hover:bg-[#0665B6] disabled:opacity-50 cursor-pointer"
+              >
+                <Download size={14} />
+                <span>{t("auditLogs.exportLogs") || "Export Logs"}</span>
+                <ChevronDown size={13} className={`transition-transform ${exportMenuOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {exportMenuOpen && (
+                <div className="absolute right-0 top-full z-50 mt-1.5 w-44 rounded-xl border border-[#D9E4EC] bg-white py-1.5 shadow-xl dark:border-[#1E435E] dark:bg-[#0B2538]">
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Export Format
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleExportJson}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#EAF5FC] dark:text-slate-200 dark:hover:bg-[#123142] transition cursor-pointer"
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center rounded bg-amber-100 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">JSON</span>
+                    <span>Raw JSON (.json)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportCsv}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#EAF5FC] dark:text-slate-200 dark:hover:bg-[#123142] transition cursor-pointer"
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center rounded bg-blue-100 text-[10px] font-bold text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">CSV</span>
+                    <span>CSV Spreadsheet (.csv)</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

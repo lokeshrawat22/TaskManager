@@ -16,6 +16,7 @@ import {
   Lock,
   FileCheck,
   Loader2,
+  BarChart3,
 } from "lucide-react";
 
 import { apiRequest } from "@/service/api.service";
@@ -27,7 +28,7 @@ import { downloadExportFile } from "@/service/export.service";
 // TYPES
 // =====================================================
 
-type ExportScope = "employees" | "tasks" | "all";
+type ExportScope = "employees" | "tasks" | "reports" | "all";
 type ExportFormat = "csv" | "xlsx" | "json" | "pdf";
 
 interface StatsData {
@@ -129,11 +130,7 @@ export default function AdminExportsPage() {
     } catch (error: any) {
       console.error("Export error:", error);
       const msg = error?.message || "Unable to export data. Please try again.";
-      if (msg.toLowerCase().includes("no data")) {
-        showToast.error(t("exports.noDataAvailable") || "No data available to export.");
-      } else {
-        showToast.error(t("exports.unableToExport") || "Unable to export data. Please try again.");
-      }
+      showToast.error(msg);
     } finally {
       setIsExporting(false);
     }
@@ -143,6 +140,7 @@ export default function AdminExportsPage() {
   const scopeNames: Record<ExportScope, string> = {
     employees: t("exports.employees") || "Employees",
     tasks: t("exports.tasks") || "Tasks",
+    reports: t("exports.reports") || "Executive Reports",
     all: t("exports.allData") || "All Data",
   };
 
@@ -156,7 +154,7 @@ export default function AdminExportsPage() {
   const currentRecordCount =
     selectedScope === "employees"
       ? stats.totalEmployees
-      : selectedScope === "tasks"
+      : selectedScope === "tasks" || selectedScope === "reports"
       ? stats.totalTasks
       : stats.totalEmployees + stats.totalTasks;
 
@@ -339,8 +337,8 @@ export default function AdminExportsPage() {
               </div>
             </div>
 
-            {/* 3 DATASET CARDS */}
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+            {/* 4 DATASET CARDS */}
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {/* EMPLOYEES */}
               <button
                 type="button"
@@ -432,6 +430,54 @@ export default function AdminExportsPage() {
                     {t("exports.availableRecords") || "Available records"}
                   </span>
                   <span className="rounded-md bg-[#EEF4FF] px-2.5 py-0.5 text-[11.5px] font-bold text-[#2F7BE5] dark:bg-[#142A4A] dark:text-[#6FA2F4]">
+                    {loadingStats ? "—" : stats.totalTasks} {t("exports.records") || "records"}
+                  </span>
+                </div>
+              </button>
+
+              {/* REPORTS */}
+              <button
+                type="button"
+                onClick={() => setSelectedScope("reports")}
+                className={`group flex min-h-[175px] flex-col justify-between rounded-xl p-4 sm:p-4.5 text-left transition-all ${
+                  selectedScope === "reports"
+                    ? "border-2 border-[#0879D9] bg-[#F2F9FD] shadow-xs dark:border-[#00C2E8] dark:bg-[#0E3550]/40"
+                    : "border border-[#D6E2EB] bg-white hover:border-[#0879D9]/50 dark:border-[#1E435E] dark:bg-[#082030] dark:hover:border-[#00C2E8]/50"
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#F5F3FF] text-[#7C3AED] dark:bg-[#251B4E] dark:text-[#A78BFA]">
+                      <BarChart3 size={20} strokeWidth={2} />
+                    </div>
+
+                    {/* Radio Indicator */}
+                    <div
+                      className={`flex h-5 w-5 items-center justify-center rounded-full border-2 transition-all ${
+                        selectedScope === "reports"
+                          ? "border-[#0879D9] bg-white dark:border-[#00C2E8] dark:bg-[#06243A]"
+                          : "border-[#D6E2EB] bg-white dark:border-[#234B69] dark:bg-[#0B2538]"
+                      }`}
+                    >
+                      {selectedScope === "reports" && (
+                        <div className="h-2.5 w-2.5 rounded-full bg-[#0879D9] dark:bg-[#00C2E8]" />
+                      )}
+                    </div>
+                  </div>
+
+                  <h3 className="mt-3 text-[15px] font-bold text-[#07365A] dark:text-white">
+                    {t("exports.reports") || "Reports"}
+                  </h3>
+                  <p className="mt-1 text-[12px] leading-relaxed text-[#66829A] dark:text-[#8CB0C7]">
+                    Executive performance summaries, task metrics, and department throughput analytics.
+                  </p>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between border-t border-[#E2ECF2] pt-2.5 text-xs dark:border-[#1A415C]">
+                  <span className="font-medium text-[#66829A] dark:text-[#8CB0C7]">
+                    {t("exports.availableRecords") || "Available records"}
+                  </span>
+                  <span className="rounded-md bg-[#F5F3FF] px-2.5 py-0.5 text-[11.5px] font-bold text-[#7C3AED] dark:bg-[#251B4E] dark:text-[#A78BFA]">
                     {loadingStats ? "—" : stats.totalTasks} {t("exports.records") || "records"}
                   </span>
                 </div>

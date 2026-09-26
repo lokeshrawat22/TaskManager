@@ -38,6 +38,7 @@ import {
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { apiRequest } from "@/service/api.service";
+import { downloadExportFile, ExportFormat } from "@/service/export.service";
 import { useLanguage } from "@/context/LanguageContext";
 import { showToast } from "@/lib/toast";
 import { useDepartments } from "@/hooks/useDepartments";
@@ -190,6 +191,99 @@ function isOverdue(task: Task): boolean {
   }
   const dueTime = new Date(task.dueDate).getTime();
   return !Number.isNaN(dueTime) && dueTime < Date.now();
+}
+
+function getTaskDescriptionPreview(description?: string, maxLength: number = 40): string {
+  if (!description) return "";
+  const trimmed = description.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+  const sliced = trimmed.slice(0, maxLength);
+  const lastSpace = sliced.lastIndexOf(" ");
+  const cutPoint = lastSpace > maxLength - 12 ? lastSpace : maxLength;
+  return `${trimmed.slice(0, cutPoint).trimEnd()}...`;
+}
+
+const AVATAR_THEMES = [
+  { bg: "bg-[#EFF8FA] dark:bg-[#0E3544]", text: "text-[#087D8F] dark:text-[#4CD2DA]" },
+  { bg: "bg-[#F3F4F6] dark:bg-[#1F2937]", text: "text-[#4B5563] dark:text-[#9CA3AF]" },
+  { bg: "bg-[#EEF2FF] dark:bg-[#1E1B4B]", text: "text-[#4F46E5] dark:text-[#818CF8]" },
+  { bg: "bg-[#ECFDF5] dark:bg-[#064E3B]", text: "text-[#059669] dark:text-[#34D399]" },
+  { bg: "bg-[#FFFBEB] dark:bg-[#451A03]", text: "text-[#D97706] dark:text-[#FBBF24]" },
+  { bg: "bg-[#FEF2F2] dark:bg-[#450A0A]", text: "text-[#DC2626] dark:text-[#F87171]" },
+  { bg: "bg-[#F5F3FF] dark:bg-[#2E1065]", text: "text-[#7C3AED] dark:text-[#A78BFA]" },
+];
+
+function getAvatarTheme(name: string) {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return AVATAR_THEMES[Math.abs(hash) % AVATAR_THEMES.length];
+}
+
+function StatusBadge({ status }: { status?: string }) {
+  const { t } = useLanguage();
+  const normalized = normalizeStatus(status);
+
+  if (normalized === "COMPLETED") {
+    return (
+      <span className="inline-flex h-[24px] items-center gap-1.5 rounded-md border border-emerald-300 bg-[#ECFDF5] px-2.5 text-[12px] font-semibold leading-none text-[#00875A] whitespace-nowrap shrink-0 dark:border-emerald-700 dark:bg-[#064E3B]/60 dark:text-[#34D399]">
+        <CheckCircle2 size={12} strokeWidth={2.2} className="shrink-0 text-[#00875A] dark:text-[#34D399]" />
+        <span className="whitespace-nowrap">{t("status.completed") || "Completed"}</span>
+      </span>
+    );
+  }
+
+  if (normalized === "IN_PROGRESS") {
+    return (
+      <span className="inline-flex h-[24px] items-center gap-1.5 rounded-md border border-sky-300 bg-[#EFF6FF] px-2.5 text-[12px] font-semibold leading-none text-[#0284C7] whitespace-nowrap shrink-0 dark:border-sky-700 dark:bg-[#1E3A5F]/60 dark:text-[#38BDF8]">
+        <Clock3 size={12} strokeWidth={2.2} className="shrink-0 text-[#0284C7] dark:text-[#38BDF8]" />
+        <span className="whitespace-nowrap">{t("status.in_progress") || "In Progress"}</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex h-[24px] items-center gap-1.5 rounded-md border border-amber-300 bg-[#FFFBEB] px-2.5 text-[12px] font-semibold leading-none text-[#D97706] whitespace-nowrap shrink-0 dark:border-amber-700 dark:bg-[#451A03]/60 dark:text-[#FBBF24]">
+      <Clock3 size={12} strokeWidth={2.2} className="shrink-0 text-[#D97706] dark:text-[#FBBF24]" />
+      <span className="whitespace-nowrap">{t("status.pending") || "Pending"}</span>
+    </span>
+  );
+}
+
+function PriorityBadge({ priority }: { priority?: string }) {
+  const { t } = useLanguage();
+  const normalized = normalizePriority(priority);
+
+  if (normalized === "URGENT") {
+    return (
+      <span className="inline-flex h-[22px] items-center rounded-[6px] border border-rose-300 bg-[#FEF2F2] px-2 text-[12px] font-semibold leading-none text-[#DC2626] whitespace-nowrap shrink-0 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+        <span className="whitespace-nowrap">{t("priority.urgent") || "Urgent"}</span>
+      </span>
+    );
+  }
+
+  if (normalized === "HIGH") {
+    return (
+      <span className="inline-flex h-[22px] items-center rounded-[6px] border border-amber-300 bg-[#FFFBEB] px-2 text-[12px] font-semibold leading-none text-[#D97706] whitespace-nowrap shrink-0 dark:border-amber-800 dark:bg-amber-950/60 dark:text-[#FBBF24]">
+        <span className="whitespace-nowrap">{t("priority.high") || "High"}</span>
+      </span>
+    );
+  }
+
+  if (normalized === "LOW") {
+    return (
+      <span className="inline-flex h-[22px] items-center rounded-[6px] border border-emerald-300 bg-[#ECFDF5] px-2 text-[12px] font-semibold leading-none text-[#059669] whitespace-nowrap shrink-0 dark:border-emerald-800 dark:bg-[#064E3B]/60 dark:text-[#34D399]">
+        <span className="whitespace-nowrap">{t("priority.low") || "Low"}</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex h-[22px] items-center rounded-[6px] border border-sky-300 bg-[#F0F9FF] px-2 text-[12px] font-semibold leading-none text-[#0284C7] whitespace-nowrap shrink-0 dark:border-sky-800 dark:bg-sky-950/60 dark:text-[#38BDF8]">
+      <span className="whitespace-nowrap">{t("priority.medium") || "Medium"}</span>
+    </span>
+  );
 }
 
 // =====================================================
@@ -671,6 +765,21 @@ export default function ReportsPage() {
   const [modalTo, setModalTo] = useState("");
   const [customModalError, setCustomModalError] = useState("");
 
+  // Export state
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // ===================================================
   // FETCH RAW DATA FROM APPLICATION API
   // ===================================================
@@ -1131,35 +1240,46 @@ export default function ReportsPage() {
     });
   };
 
-  // CSV Export for Requirement #36
-  const handleExportCSV = () => {
-    if (filteredTasks.length === 0) {
-      showToast.warning(t("reports.noTasksToExport") || "No tasks available to export for the selected filters.");
-      return;
+  // Multi-format Report Export (PDF, Excel, CSV, JSON) via backend export engine
+  const handleExportReport = async (format: ExportFormat) => {
+    setExportMenuOpen(false);
+    if (isExporting) return;
+    setIsExporting(true);
+
+    try {
+      const params: Record<string, string> = {
+        scope: "reports",
+        format,
+      };
+
+      if (filters.status && filters.status !== "ALL") {
+        params.status = filters.status;
+      }
+      if (filters.priority && filters.priority !== "ALL") {
+        params.priority = filters.priority;
+      }
+      if (filters.employeeId && filters.employeeId !== "ALL") {
+        params.assignee = filters.employeeId;
+      }
+      if (filters.department && filters.department !== "ALL") {
+        params.department = filters.department;
+      }
+      if (filters.search && filters.search.trim()) {
+        params.search = filters.search.trim();
+      }
+      if (rangeBounds.hasBounds) {
+        params.fromDate = rangeBounds.start.toISOString();
+        params.toDate = rangeBounds.end.toISOString();
+      }
+
+      await downloadExportFile(params);
+      showToast.success(`Report exported successfully as ${format.toUpperCase()}`);
+    } catch (err: any) {
+      console.error("Export error:", err);
+      showToast.error(err?.message || "Failed to export report. Please try again.");
+    } finally {
+      setIsExporting(false);
     }
-
-    const headers = ["Task ID", "Title", "Status", "Priority", "Due Date", "Created At", "Assigned To", "Department"];
-    const rows = filteredTasks.map((t) => [
-      t._id || t.id || "",
-      `"${(t.title || "").replace(/"/g, '""')}"`,
-      normalizeStatus(t.status),
-      normalizePriority(t.priority),
-      t.dueDate ? t.dueDate.slice(0, 10) : "",
-      t.createdAt ? t.createdAt.slice(0, 10) : "",
-      `"${getEmployeeName(t.assignedTo).replace(/"/g, '""')}"`,
-      `"${(t.assignedTo && typeof t.assignedTo === "object" ? t.assignedTo.department || "" : "").replace(/"/g, '""')}"`,
-    ]);
-
-    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `task-report-${rangeBounds.label.replace(/[^a-zA-Z0-9]/g, "-")}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast.success(t("reports.exportSuccess") || "Report CSV exported successfully.");
   };
 
   // ===================================================
@@ -1264,16 +1384,64 @@ export default function ReportsPage() {
               <span>{t("reports.liveDatabase") || "Live Database"}</span>
             </div>
 
-            {/* Export CSV Button */}
-            <button
-              type="button"
-              onClick={handleExportCSV}
-              className="flex items-center gap-1.5 rounded-[9px] border border-[#D8E4EC] bg-white px-3.5 py-2 text-xs font-semibold text-[#063B61] shadow-2xs hover:bg-[#F8FAFC] dark:border-[#1E435E] dark:bg-[#0B2538] dark:text-[#D7E7EC] dark:hover:bg-[#132E3A] transition"
-              title="Export filtered data to CSV"
-            >
-              <Download size={14} className="text-[#087D8F] dark:text-[#4CD2DA]" />
-              <span>{t("reports.exportCSV") || "Export CSV"}</span>
-            </button>
+            {/* Export Dropdown */}
+            <div className="relative" ref={exportDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setExportMenuOpen((prev) => !prev)}
+                disabled={isExporting}
+                className="flex items-center gap-1.5 rounded-[9px] border border-[#D8E4EC] bg-white px-3.5 py-2 text-xs font-semibold text-[#063B61] shadow-2xs hover:bg-[#F8FAFC] dark:border-[#1E435E] dark:bg-[#0B2538] dark:text-[#D7E7EC] dark:hover:bg-[#132E3A] transition disabled:opacity-60"
+                title="Export report in multiple formats"
+              >
+                {isExporting ? (
+                  <RefreshCw size={14} className="animate-spin text-[#087D8F] dark:text-[#4CD2DA]" />
+                ) : (
+                  <Download size={14} className="text-[#087D8F] dark:text-[#4CD2DA]" />
+                )}
+                <span>{isExporting ? "Exporting..." : (t("reports.exportReport") || "Export Report")}</span>
+                <ChevronDown size={13} className={`text-slate-400 transition-transform ${exportMenuOpen ? "rotate-180" : ""}`} />
+              </button>
+
+              {exportMenuOpen && (
+                <div className="absolute right-0 top-full z-50 mt-1.5 w-48 rounded-xl border border-[#D8E4EC] bg-white py-1.5 shadow-xl dark:border-[#1E435E] dark:bg-[#0B2538]">
+                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Choose Format
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleExportReport("pdf")}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#EAF5FC] dark:text-slate-200 dark:hover:bg-[#123142] transition"
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center rounded bg-red-100 text-[10px] font-bold text-red-700 dark:bg-red-950/60 dark:text-red-400">PDF</span>
+                    <span>PDF Document (.pdf)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExportReport("xlsx")}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#EAF5FC] dark:text-slate-200 dark:hover:bg-[#123142] transition"
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center rounded bg-emerald-100 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400">XLS</span>
+                    <span>Excel (.xlsx)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExportReport("csv")}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#EAF5FC] dark:text-slate-200 dark:hover:bg-[#123142] transition"
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center rounded bg-blue-100 text-[10px] font-bold text-blue-700 dark:bg-blue-950/60 dark:text-blue-400">CSV</span>
+                    <span>CSV Spreadsheet (.csv)</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleExportReport("json")}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-[#EAF5FC] dark:text-slate-200 dark:hover:bg-[#123142] transition"
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center rounded bg-amber-100 text-[10px] font-bold text-amber-700 dark:bg-amber-950/60 dark:text-amber-400">JSON</span>
+                    <span>Raw JSON (.json)</span>
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Refresh Button */}
             <button
@@ -2038,38 +2206,41 @@ export default function ReportsPage() {
         </section>
 
         {/* =================================================
-            7. RECENT TASK ACTIVITY TABLE
+            7. RECENT TASK ACTIVITY TABLE & MOBILE CARDS
         ================================================= */}
         <section className="rounded-2xl border border-[#D8E4EC] bg-white shadow-[0_2px_12px_rgba(6,61,99,0.03)] dark:border-[#1E435E] dark:bg-[#0B2538] overflow-hidden">
-          <div className="flex items-center justify-between border-b border-[#D8E4EC] p-4 sm:p-5 dark:border-[#1E435E]">
-            <div>
+          {/* SECTION HEADER */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#D8E4EC] p-4 sm:p-5 dark:border-[#1E435E]">
+            <div className="min-w-0">
               <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#087D8F] dark:text-[#4CD2DA]">
                 {t("reports.taskRecords") || "TASK RECORDS"}
               </p>
-              <h3 className="text-base font-bold text-[#063B61] dark:text-white">
-                {t("reports.filteredTasks") || "Filtered Tasks"} ({filteredTasks.length})
+              <h3 className="text-base font-bold text-[#063B61] dark:text-white truncate">
+                {t("reports.filteredTasks") || "Filtered Tasks"}{" "}
+                <span className="text-[#087D8F] dark:text-[#4CD2DA] tabular-nums font-semibold">({filteredTasks.length})</span>
               </h3>
             </div>
 
             <button
               type="button"
               onClick={() => router.push("/admin/tasks")}
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#087D8F] hover:underline dark:text-[#4CD2DA]"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-[#087D8F] hover:underline dark:text-[#4CD2DA] shrink-0 self-start sm:self-auto cursor-pointer"
             >
               <span>{t("reports.manageTasks") || "Manage Tasks"}</span>
               <ArrowRight size={13} />
             </button>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* DESKTOP & TABLET VIEW: DATA TABLE */}
+          <div className="hidden md:block w-full overflow-x-auto responsive-table-scroll">
             <table className="enterprise-table w-full text-left border-collapse table-fixed border border-[#E2E8F0] dark:border-[#1E3A47]">
               <thead className="border-b border-[#D8DEE8] dark:border-[#1E3A47]">
                 <tr className="h-11 border-b border-[#D8DEE8] bg-[#F8FAFC] text-[10px] font-bold uppercase tracking-wider text-[#6B879B] dark:border-[#1E3A47] dark:bg-[#102A36] dark:text-[#8FA8B2]">
-                  <th className="w-[45%] px-5 border-b border-[#D8DEE8] dark:border-[#1E3A47]">{t("reports.taskHeader") || "TASK"}</th>
-                  <th className="w-[20%] px-4 border-b border-[#D8DEE8] dark:border-[#1E3A47]">{t("reports.assignedToHeader") || "ASSIGNED TO"}</th>
-                  <th className="w-[12%] px-4 border-b border-[#D8DEE8] dark:border-[#1E3A47]">{t("reports.priorityHeader") || "PRIORITY"}</th>
-                  <th className="w-[13%] px-4 border-b border-[#D8DEE8] dark:border-[#1E3A47]">{t("reports.dueDateHeader") || "DUE DATE"}</th>
-                  <th className="w-[10%] px-4 border-b border-[#D8DEE8] dark:border-[#1E3A47]">{t("reports.statusHeader") || "STATUS"}</th>
+                  <th className="w-[32%] px-5 py-3 border-b border-[#D8DEE8] dark:border-[#1E3A47] text-left">{t("reports.taskHeader") || "TASK"}</th>
+                  <th className="w-[22%] px-4 py-3 border-b border-[#D8DEE8] dark:border-[#1E3A47] text-left whitespace-nowrap">{t("reports.assignedToHeader") || "ASSIGNED TO"}</th>
+                  <th className="w-[14%] px-4 py-3 border-b border-[#D8DEE8] dark:border-[#1E3A47] text-left whitespace-nowrap">{t("reports.priorityHeader") || "PRIORITY"}</th>
+                  <th className="w-[18%] px-4 py-3 border-b border-[#D8DEE8] dark:border-[#1E3A47] text-left whitespace-nowrap">{t("reports.dueDateHeader") || "DUE DATE"}</th>
+                  <th className="w-[14%] px-4 py-3 border-b border-[#D8DEE8] dark:border-[#1E3A47] text-left whitespace-nowrap">{t("reports.statusHeader") || "STATUS"}</th>
                 </tr>
               </thead>
 
@@ -2081,59 +2252,152 @@ export default function ReportsPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredTasks.slice(0, 8).map((task) => (
-                    <tr
-                      key={task._id}
-                      onClick={() => router.push(`/admin/tasks/${task._id}`)}
-                      className="group h-[64px] cursor-pointer transition-colors hover:bg-[#F8FBFD] dark:hover:bg-[#132E3A]/60"
-                    >
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#EFF7FB] text-[#087D8F] dark:bg-[#123C46] dark:text-[#4CD2DA]">
-                            <ListTodo size={15} />
+                  filteredTasks.slice(0, 8).map((task) => {
+                    const assignedName = getEmployeeName(task.assignedTo, t("reports.employee") || "Unassigned", t("reports.employee") || "Employee");
+                    const assignedDept = task.assignedTo && typeof task.assignedTo === "object" ? task.assignedTo.department || "General" : "—";
+
+                    return (
+                      <tr
+                        key={task._id}
+                        onClick={() => router.push(`/admin/tasks/${task._id}`)}
+                        className="group h-[64px] cursor-pointer transition-colors hover:bg-[#F8FBFD] dark:hover:bg-[#132E3A]/60"
+                      >
+                        {/* 1. TASK */}
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] bg-[#EFF7FB] text-[#087D8F] dark:bg-[#123C46] dark:text-[#4CD2DA] border border-[#D8E4EC] dark:border-[#1E435E]">
+                              <ListTodo size={15} />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-bold text-[#063B61] group-hover:text-[#0879D9] dark:text-white transition-colors" title={task.title}>
+                                {task.title}
+                              </p>
+                              <p className="truncate text-[11px] text-[#6B879B] dark:text-[#8CB0C7]" title={task.description}>
+                                {getTaskDescriptionPreview(task.description, 45) || (t("reports.noDescription") || "No description provided")}
+                              </p>
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-bold text-[#063B61] group-hover:text-[#0879D9] dark:text-white">
-                              {task.title}
-                            </p>
-                            <p className="truncate text-[11px] text-[#6B879B] dark:text-[#8CB0C7]">
-                              {task.description || t("reports.noDescription") || "No description provided"}
-                            </p>
+                        </td>
+
+                        {/* 2. ASSIGNED TO */}
+                        <td className="px-4 py-3">
+                          <p className="truncate text-xs font-bold text-[#063B61] dark:text-white" title={assignedName}>
+                            {assignedName}
+                          </p>
+                          <p className="truncate text-[10.5px] text-[#6B879B] dark:text-[#8FA8B2]">
+                            {assignedDept}
+                          </p>
+                        </td>
+
+                        {/* 3. PRIORITY */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <PriorityBadge priority={task.priority} />
+                        </td>
+
+                        {/* 4. DUE DATE */}
+                        <td className="px-4 py-3 whitespace-nowrap text-xs text-[#536B77] dark:text-[#CBD5E1]">
+                          <div className="flex items-center gap-1.5 whitespace-nowrap">
+                            <Calendar size={13} className="shrink-0 text-[#718899] dark:text-[#8CB0C7]" />
+                            <span className="whitespace-nowrap">{formatDate(task.dueDate, language)}</span>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      <td className="px-4 py-3">
-                        <p className="truncate text-xs font-bold text-[#063B61] dark:text-white">
-                          {getEmployeeName(task.assignedTo, t("reports.employee") || "Unassigned", t("reports.employee") || "Employee")}
-                        </p>
-                        <p className="truncate text-[10.5px] text-[#6B879B] dark:text-[#8FA8B2]">
-                          {task.assignedTo && typeof task.assignedTo === "object"
-                            ? task.assignedTo.department || "General"
-                            : "—"}
-                        </p>
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <span className="rounded-md border px-2 py-0.5 text-[10px] font-bold text-[#063B61] dark:text-white border-[#D8E4EC] dark:border-[#3A5F71]">
-                          {t(`priority.${task.priority || "medium"}`.toLowerCase()) || normalizePriority(task.priority)}
-                        </span>
-                      </td>
-
-                      <td className="px-4 py-3 text-xs text-[#536B77] dark:text-[#CBD5E1]">
-                        {formatDate(task.dueDate, language)}
-                      </td>
-
-                      <td className="px-4 py-3">
-                        <span className="text-xs font-bold text-[#063B61] dark:text-white">
-                          {t(`status.${task.status || "pending"}`.toLowerCase()) || normalizeStatus(task.status)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
+                        {/* 5. STATUS */}
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex items-center justify-between gap-1.5">
+                            <StatusBadge status={task.status} />
+                            <ArrowRight size={13} className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all text-[#087D8F] dark:text-[#4CD2DA] shrink-0" />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
+          </div>
+
+          {/* MOBILE VIEW: COMPACT RESPONSIVE TASK CARDS */}
+          <div className="block md:hidden p-3.5 space-y-2.5 bg-[#FAFDFE]/60 dark:bg-[#081C27]/40">
+            {filteredTasks.length === 0 ? (
+              <div className="rounded-xl border border-[#D8E4EC] bg-white p-8 text-center shadow-2xs dark:border-[#1E435E] dark:bg-[#0B2538]">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-[#D8E4EC] bg-[#EFF7FB] text-[#087D8F] shadow-2xs dark:border-[#1E435E] dark:bg-[#123C46] dark:text-[#4CD2DA]">
+                  <ListTodo size={22} strokeWidth={2} />
+                </div>
+                <p className="mt-3 text-sm font-bold text-[#063B61] dark:text-white">
+                  {t("reports.noMatchingTasks") || "No tasks found matching your active filters in this date window."}
+                </p>
+              </div>
+            ) : (
+              filteredTasks.slice(0, 8).map((task) => {
+                const assignedName = getEmployeeName(task.assignedTo, t("reports.employee") || "Unassigned", t("reports.employee") || "Employee");
+                const assignedDept = task.assignedTo && typeof task.assignedTo === "object" ? task.assignedTo.department : null;
+                const avatarTheme = getAvatarTheme(assignedName);
+
+                return (
+                  <div
+                    key={task._id}
+                    onClick={() => router.push(`/admin/tasks/${task._id}`)}
+                    className="group rounded-xl border border-[#D8E4EC] bg-white p-3 shadow-2xs hover:border-[#087D8F]/40 hover:bg-[#F8FBFD] dark:border-[#1E435E] dark:bg-[#0B2538] dark:hover:bg-[#132E3A]/60 transition-all cursor-pointer space-y-2.5"
+                  >
+                    {/* TOP ROW: Icon + Title & Short Description Preview + Chevron */}
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#EFF7FB] text-[#087D8F] dark:bg-[#123C46] dark:text-[#4CD2DA] border border-[#D8E4EC] dark:border-[#1E435E] mt-0.5">
+                          <ListTodo size={15} strokeWidth={2.2} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="truncate text-[13px] font-bold text-[#063B61] group-hover:text-[#0879D9] dark:text-white dark:group-hover:text-[#4CD2DA] transition-colors leading-tight">
+                            {task.title}
+                          </h4>
+                          <p className="truncate text-[11px] font-medium text-[#6B879B] dark:text-[#8CB0C7] mt-0.5 leading-tight">
+                            {getTaskDescriptionPreview(task.description, 45) || (t("reports.noDescription") || "No description provided")}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="shrink-0 flex items-center pt-1 text-[#8497A1] group-hover:text-[#0879D9] group-hover:translate-x-0.5 transition-all dark:text-[#8CB0C7]">
+                        <ChevronRight size={16} />
+                      </div>
+                    </div>
+
+                    {/* BOTTOM ROW: Assignee (Left) + Badges (Right: Due Date, Priority, Status) */}
+                    <div className="pt-2 border-t border-[#F0F5F8] dark:border-[#173950] flex flex-wrap items-center justify-between gap-2">
+                      {/* ASSIGNEE */}
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md font-bold text-[10px] border border-[#D6E4EC] dark:border-[#1E435E] ${avatarTheme.bg} ${avatarTheme.text}`}>
+                          {getEmployeeInitials(assignedName)}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block text-xs font-semibold text-[#063B61] dark:text-white truncate max-w-[120px] leading-tight">
+                            {assignedName}
+                          </span>
+                          {assignedDept && (
+                            <span className="block text-[10px] text-[#6B879B] dark:text-[#8FA8B2] truncate max-w-[120px] leading-none mt-0.5">
+                              {assignedDept}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* BADGES: Due Date + Priority + Status */}
+                      <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                        {/* DUE DATE */}
+                        <div className="inline-flex items-center gap-1 text-[11px] text-[#536B77] dark:text-[#CBD5E1] whitespace-nowrap bg-[#F8FAFC] dark:bg-[#102A36] px-1.5 py-0.5 rounded border border-[#E2E8F0] dark:border-[#1E3A47]">
+                          <Calendar size={11} className="shrink-0 text-[#718899] dark:text-[#8CB0C7]" />
+                          <span>{formatDate(task.dueDate, language)}</span>
+                        </div>
+
+                        {/* PRIORITY */}
+                        <PriorityBadge priority={task.priority} />
+
+                        {/* STATUS */}
+                        <StatusBadge status={task.status} />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </section>
       </div>

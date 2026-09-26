@@ -129,7 +129,7 @@ export default function DashboardLayout({
       />
 
       {/* MAIN CONTAINER */}
-      <div className="min-h-screen lg:pl-[248px] flex flex-col min-w-0 max-w-full overflow-x-hidden">
+      <div className="min-h-screen lg:pl-[248px] flex flex-col min-w-0 max-w-full overflow-x-clip">
         {/* HEADER */}
         <EmployeeHeader
           user={user}

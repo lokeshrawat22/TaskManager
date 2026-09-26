@@ -412,38 +412,43 @@ export interface StatusBadgeProps {
 
 export function StatusBadge({ status, size = "md" }: StatusBadgeProps) {
   const s = String(status || "").toUpperCase().replace(/\s+/g, "_");
+  const isSmall = size === "sm";
+  const sizeClasses = isSmall
+    ? "h-[20px] text-[11px] px-2"
+    : "h-[24px] text-[12px] px-2.5";
+  const iconSize = isSmall ? 11 : 12;
 
   if (s === "COMPLETED" || s === "DONE") {
     return (
-      <span className="inline-flex h-[24px] items-center gap-1.5 rounded-md border border-emerald-300 bg-[#ECFDF5] px-2.5 text-[12px] font-semibold leading-[16px] text-[#00875A] dark:border-emerald-700 dark:bg-[#064E3B]/60 dark:text-[#34D399]">
-        <CheckCircle2 size={12} strokeWidth={2.2} className="shrink-0 text-[#00875A] dark:text-[#34D399]" />
-        Completed
+      <span className={`inline-flex items-center gap-1.5 rounded-md border border-emerald-300 bg-[#ECFDF5] font-semibold leading-none text-[#00875A] whitespace-nowrap shrink-0 dark:border-emerald-700 dark:bg-[#064E3B]/60 dark:text-[#34D399] ${sizeClasses}`}>
+        <CheckCircle2 size={iconSize} strokeWidth={2.2} className="shrink-0 text-[#00875A] dark:text-[#34D399]" />
+        <span className="whitespace-nowrap">Completed</span>
       </span>
     );
   }
 
   if (s === "IN_PROGRESS" || s === "INPROGRESS" || s === "ACTIVE") {
     return (
-      <span className="inline-flex h-[24px] items-center gap-1.5 rounded-md border border-sky-300 bg-[#EFF6FF] px-2.5 text-[12px] font-semibold leading-[16px] text-[#0284C7] dark:border-sky-700 dark:bg-[#1E3A5F]/60 dark:text-[#38BDF8]">
-        <Clock3 size={12} strokeWidth={2.2} className="shrink-0 text-[#0284C7] dark:text-[#38BDF8]" />
-        In Progress
+      <span className={`inline-flex items-center gap-1.5 rounded-md border border-sky-300 bg-[#EFF6FF] font-semibold leading-none text-[#0284C7] whitespace-nowrap shrink-0 dark:border-sky-700 dark:bg-[#1E3A5F]/60 dark:text-[#38BDF8] ${sizeClasses}`}>
+        <Clock3 size={iconSize} strokeWidth={2.2} className="shrink-0 text-[#0284C7] dark:text-[#38BDF8]" />
+        <span className="whitespace-nowrap">In Progress</span>
       </span>
     );
   }
 
   if (s === "OVERDUE") {
     return (
-      <span className="inline-flex h-[24px] items-center gap-1.5 rounded-md border border-rose-300 bg-[#FEF2F2] px-2.5 text-[12px] font-semibold leading-[16px] text-[#DC2626] dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
-        <AlertTriangle size={12} strokeWidth={2.2} className="shrink-0 text-[#DC2626] dark:text-rose-300" />
-        Overdue
+      <span className={`inline-flex items-center gap-1.5 rounded-md border border-rose-300 bg-[#FEF2F2] font-semibold leading-none text-[#DC2626] whitespace-nowrap shrink-0 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300 ${sizeClasses}`}>
+        <AlertTriangle size={iconSize} strokeWidth={2.2} className="shrink-0 text-[#DC2626] dark:text-rose-300" />
+        <span className="whitespace-nowrap">Overdue</span>
       </span>
     );
   }
 
   return (
-    <span className="inline-flex h-[24px] items-center gap-1.5 rounded-md border border-amber-300 bg-[#FFFBEB] px-2.5 text-[12px] font-semibold leading-[16px] text-[#D97706] dark:border-amber-700 dark:bg-[#451A03]/60 dark:text-[#FBBF24]">
-      <Clock3 size={12} strokeWidth={2.2} className="shrink-0 text-[#D97706] dark:text-[#FBBF24]" />
-      Pending
+    <span className={`inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-[#FFFBEB] font-semibold leading-none text-[#D97706] whitespace-nowrap shrink-0 dark:border-amber-700 dark:bg-[#451A03]/60 dark:text-[#FBBF24] ${sizeClasses}`}>
+      <Clock3 size={iconSize} strokeWidth={2.2} className="shrink-0 text-[#D97706] dark:text-[#FBBF24]" />
+      <span className="whitespace-nowrap">Pending</span>
     </span>
   );
 }
@@ -462,31 +467,31 @@ export function PriorityBadge({ priority }: PriorityBadgeProps) {
 
   if (p === "URGENT") {
     return (
-      <span className="inline-flex h-[22px] items-center rounded-[6px] border border-rose-300 bg-[#FEF2F2] px-2 text-[12px] font-semibold leading-[16px] text-[#DC2626] dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
-        Urgent
+      <span className="inline-flex h-[22px] items-center rounded-[6px] border border-rose-300 bg-[#FEF2F2] px-2 text-[12px] font-semibold leading-none text-[#DC2626] whitespace-nowrap shrink-0 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-300">
+        <span className="whitespace-nowrap">Urgent</span>
       </span>
     );
   }
 
   if (p === "HIGH") {
     return (
-      <span className="inline-flex h-[22px] items-center rounded-[6px] border border-amber-300 bg-[#FFFBEB] px-2 text-[12px] font-semibold leading-[16px] text-[#D97706] dark:border-amber-800 dark:bg-amber-950/60 dark:text-[#FBBF24]">
-        High
+      <span className="inline-flex h-[22px] items-center rounded-[6px] border border-amber-300 bg-[#FFFBEB] px-2 text-[12px] font-semibold leading-none text-[#D97706] whitespace-nowrap shrink-0 dark:border-amber-800 dark:bg-amber-950/60 dark:text-[#FBBF24]">
+        <span className="whitespace-nowrap">High</span>
       </span>
     );
   }
 
   if (p === "LOW") {
     return (
-      <span className="inline-flex h-[22px] items-center rounded-[6px] border border-emerald-300 bg-[#ECFDF5] px-2 text-[12px] font-semibold leading-[16px] text-[#059669] dark:border-emerald-800 dark:bg-[#064E3B]/60 dark:text-[#34D399]">
-        Low
+      <span className="inline-flex h-[22px] items-center rounded-[6px] border border-emerald-300 bg-[#ECFDF5] px-2 text-[12px] font-semibold leading-none text-[#059669] whitespace-nowrap shrink-0 dark:border-emerald-800 dark:bg-[#064E3B]/60 dark:text-[#34D399]">
+        <span className="whitespace-nowrap">Low</span>
       </span>
     );
   }
 
   return (
-    <span className="inline-flex h-[22px] items-center rounded-[6px] border border-sky-300 bg-[#F0F9FF] px-2 text-[12px] font-semibold leading-[16px] text-[#0284C7] dark:border-sky-800 dark:bg-sky-950/60 dark:text-[#38BDF8]">
-      Medium
+    <span className="inline-flex h-[22px] items-center rounded-[6px] border border-sky-300 bg-[#F0F9FF] px-2 text-[12px] font-semibold leading-none text-[#0284C7] whitespace-nowrap shrink-0 dark:border-sky-800 dark:bg-sky-950/60 dark:text-[#38BDF8]">
+      <span className="whitespace-nowrap">Medium</span>
     </span>
   );
 }

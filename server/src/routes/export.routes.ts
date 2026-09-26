@@ -6,13 +6,13 @@ import { authorize } from "../middlewares/role.middleware.js";
 const router = Router();
 
 // =====================================================
-// ALL EXPORT ROUTES REQUIRE AUTHENTICATION & ADMIN ROLE
+// ALL EXPORT ROUTES REQUIRE AUTHENTICATION
+// (Scope-based RBAC enforced inside exportData handler)
 // =====================================================
 router.use(authenticate);
-router.use(authorize("admin"));
 
 // GET /api/export
-// Query params: scope (employees|tasks|all), format (csv|xlsx|json)
+// Query params: scope (employees|tasks|reports|all), format (csv|xlsx|json|pdf)
 router.get("/", exportData);
 router.get("/data", exportData);
 
