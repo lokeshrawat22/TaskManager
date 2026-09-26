@@ -16,7 +16,7 @@ import adminRoutes from "./routes/admin.routes.js";
 import masterDataRoutes from "./routes/masterData.routes.js";
 // Middleware
 import { errorHandler } from "./middlewares/error.middleware.js";
-import { csrfProtection } from "./middlewares/csrf.middleware.js";
+import { csrfProtection, getAllowedOrigins } from "./middlewares/csrf.middleware.js";
 
 const app: Application = express();
 
@@ -41,12 +41,6 @@ app.use(
 // CORS CONFIGURATION
 // =====================================================
 
-const rawAllowedOrigins = [
-  process.env.FRONTEND_URL,
-  process.env.CLIENT_URL,
-  "https://taskmanager-1-lw5v.onrender.com/"
-].filter(Boolean) as string[];
-
 const corsOptions: cors.CorsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps, curl, server-to-server)
@@ -54,7 +48,8 @@ const corsOptions: cors.CorsOptions = {
       return callback(null, true);
     }
 
-    const isAllowed = rawAllowedOrigins.some((allowed) => {
+    const allowedOrigins = getAllowedOrigins();
+    const isAllowed = allowedOrigins.some((allowed) => {
       try {
         return new URL(allowed).origin === new URL(origin).origin;
       } catch {
@@ -77,6 +72,8 @@ const corsOptions: cors.CorsOptions = {
     "Accept",
     "X-Login-Key-Id",
     "x-login-key-id",
+    "X-CSRF-Token",
+    "x-csrf-token",
   ],
 };
 

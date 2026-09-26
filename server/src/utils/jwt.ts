@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import type { CookieOptions } from "express";
 import jwt, {
   JwtPayload,
   SignOptions,
@@ -316,4 +317,38 @@ export const parseDeviceInfo = (userAgent?: string): string => {
   else if (ua.includes("firefox/")) browser = "Firefox";
 
   return `${browser} on ${os}`;
+};
+
+// =====================================================
+// AUTH COOKIE OPTIONS (CROSS-SITE & PRODUCTION SAFE)
+// =====================================================
+
+export const getAuthCookieOptions = (): CookieOptions => {
+  const isProduction = process.env.NODE_ENV === "production";
+  const sameSiteEnv = process.env.COOKIE_SAME_SITE?.toLowerCase();
+
+  // In production across decoupled services (e.g. Render), SameSite must be "none" with Secure=true
+  // In local development over HTTP, SameSite must be "lax" and Secure=false
+  let sameSite: "none" | "lax" | "strict" = isProduction ? "none" : "lax";
+  if (sameSiteEnv === "none" || sameSiteEnv === "lax" || sameSiteEnv === "strict") {
+    sameSite = sameSiteEnv;
+  }
+
+  const secure =
+    process.env.COOKIE_SECURE !== undefined
+      ? process.env.COOKIE_SECURE === "true"
+      : isProduction || sameSite === "none";
+
+  const options: CookieOptions = {
+    httpOnly: true,
+    secure,
+    sameSite,
+    path: "/",
+  };
+
+  if (process.env.COOKIE_DOMAIN) {
+    options.domain = process.env.COOKIE_DOMAIN;
+  }
+
+  return options;
 };

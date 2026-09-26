@@ -6,6 +6,7 @@ import {
 
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
+import { getAuthCookieOptions } from "../utils/jwt.js";
 
 // =====================================================
 // JWT PAYLOAD
@@ -105,21 +106,9 @@ export const authenticate = async (
     // =================================================
 
     if (user.isBlocked) {
-      const isProduction = process.env.NODE_ENV === "production";
-
-      res.clearCookie("accessToken", {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: "lax",
-        path: "/",
-      });
-
-      res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: isProduction,
-        sameSite: "lax",
-        path: "/",
-      });
+      const cookieOpts = getAuthCookieOptions();
+      res.clearCookie("accessToken", cookieOpts);
+      res.clearCookie("refreshToken", cookieOpts);
 
       res.status(403).json({
         success: false,

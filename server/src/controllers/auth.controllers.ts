@@ -15,6 +15,7 @@ import {
     REFRESH_TOKEN_COOKIE_MAX_AGE_REMEMBER,
     REFRESH_TOKEN_COOKIE_MAX_AGE_DEFAULT,
     TokenPayload,
+    getAuthCookieOptions,
 } from "../utils/jwt.js";
 import { auditLog } from "../utils/auditLogger.js";
 
@@ -82,10 +83,11 @@ const getSecret = (key: string): string => {
 };
 const generateToken = (userId: string, secretKey: string, expiresIn: string): string => jwt.sign({ userId }, getSecret(secretKey), { expiresIn } as jwt.SignOptions);
 const cookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax" as const,
-    path: "/",
+    get httpOnly() { return getAuthCookieOptions().httpOnly; },
+    get secure() { return getAuthCookieOptions().secure; },
+    get sameSite() { return getAuthCookieOptions().sameSite; },
+    get path() { return getAuthCookieOptions().path; },
+    get domain() { return getAuthCookieOptions().domain; },
 };
 const normalizeEmail = (email: string) => String(email).trim().toLowerCase();
 const normalizePhone = (phone: string) => String(phone).trim();
@@ -1465,9 +1467,7 @@ export const getLoginEncryptionKey = async (_req: Request, res: Response): Promi
     try {
         const sessionKey = generateEphemeralSessionKey(5 * 60 * 1000); // 5 minutes TTL
         res.cookie("loginKeyId", sessionKey.keyId, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
+            ...getAuthCookieOptions(),
             maxAge: 5 * 60 * 1000,
         });
         res.status(200).json({
