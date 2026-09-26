@@ -44,8 +44,7 @@ app.use(
 const rawAllowedOrigins = [
   process.env.FRONTEND_URL,
   process.env.CLIENT_URL,
-  "http://localhost:3000",
-  "http://127.0.0.1:3000",
+  "https://taskmanager-1-lw5v.onrender.com/"
 ].filter(Boolean) as string[];
 
 const corsOptions: cors.CorsOptions = {
